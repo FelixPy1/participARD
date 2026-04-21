@@ -1,12 +1,20 @@
 import { useState, useEffect } from 'react';
-import { supabase, UserProfile, getProfile } from './supabaseClient';
 import { Auth } from './components/Auth';
 import { AdminDashboard } from './components/AdminDashboard';
 import { MainLayout } from './components/MainLayout';
 
+// Se redefine UserProfile ya que no usaremos la interfaz de Supabase para el login nativo
+export interface UserProfile {
+  id: string;
+  email: string;
+  fullName: string;
+  role: string;
+}
+
 function App() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showAuth, setShowAuth] = useState(false);
 
   useEffect(() => {
     checkAuth();
@@ -14,20 +22,20 @@ function App() {
 
   const checkAuth = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        const profile = await getProfile(session.user.id);
-        setUser(profile);
+      const storedUser = localStorage.getItem('participARD_user');
+      if (storedUser) {
+        setUser(JSON.parse(storedUser));
+        setShowAuth(false);
       }
     } catch (error) {
-      console.error('Auth check error:', error);
+      console.error('Lector de guardado local falló:', error);
     } finally {
       setLoading(false);
     }
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    localStorage.removeItem('participARD_user');
     setUser(null);
   };
 
@@ -42,15 +50,18 @@ function App() {
     );
   }
 
-  if (!user) {
-    return <Auth onSuccess={checkAuth} />;
+  if (user?.role === 'Rol_Administradores' || user?.role === 'admin') {
+    return <AdminDashboard profile={user as any} onLogout={handleLogout} />;
   }
 
-  if (user.role === 'admin') {
-    return <AdminDashboard profile={user} onLogout={handleLogout} />;
-  }
-
-  return <MainLayout user={user} onLogout={handleLogout} />;
+  return (
+    <>
+      <MainLayout user={user as any} onLogout={handleLogout} onLoginClick={() => setShowAuth(true)} />
+      {showAuth && !user && (
+        <Auth onSuccess={checkAuth} onClose={() => setShowAuth(false)} />
+      )}
+    </>
+  );
 }
 
 export default App;

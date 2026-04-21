@@ -17,7 +17,7 @@ interface Activity {
 }
 
 interface ActivitiesPageProps {
-  user: UserProfile;
+  user: UserProfile | null;
   onLogout: () => void;
 }
 
@@ -64,6 +64,11 @@ export function ActivitiesPage({ user, onLogout }: ActivitiesPageProps) {
   );
 
   const handleEnroll = async (activityId: string) => {
+    if (!user) {
+      alert('Debes iniciar sesión para inscribirte en una actividad');
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('activity_enrollments')
@@ -92,12 +97,14 @@ export function ActivitiesPage({ user, onLogout }: ActivitiesPageProps) {
             <h1 className="text-2xl font-bold text-white">Actividades</h1>
             <p className="text-sm text-white/50 mt-1">Descubre las mejores oportunidades</p>
           </div>
-          <button
-            onClick={onLogout}
-            className="px-4 py-2 rounded-lg bg-white/6 hover:bg-white/12 text-white/70 hover:text-white transition-all"
-          >
-            Cerrar sesión
-          </button>
+          {user && (
+            <button
+              onClick={onLogout}
+              className="px-4 py-2 rounded-lg bg-white/6 hover:bg-white/12 text-white/70 hover:text-white transition-all"
+            >
+              Cerrar sesión
+            </button>
+          )}
         </div>
       </header>
 

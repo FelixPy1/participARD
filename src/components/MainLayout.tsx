@@ -8,11 +8,12 @@ import { ActivitiesPage } from './ActivitiesPage';
 import { DocumentationPage } from './DocumentationPage';
 
 interface MainLayoutProps {
-  user: UserProfile;
+  user: UserProfile | null;
   onLogout: () => void;
+  onLoginClick: () => void;
 }
 
-export function MainLayout({ user, onLogout }: MainLayoutProps) {
+export function MainLayout({ user, onLogout, onLoginClick }: MainLayoutProps) {
   const [currentPage, setCurrentPage] = useState<'home' | 'activities' | 'documentation'>('home');
 
   const handleNavigate = (page: typeof currentPage) => {
@@ -21,7 +22,7 @@ export function MainLayout({ user, onLogout }: MainLayoutProps) {
 
   return (
     <div className="min-h-screen bg-[#080d1a]">
-      <Navbar user={user} onNavigate={handleNavigate} onLogout={onLogout} currentPage={currentPage} />
+      <Navbar user={user} onNavigate={handleNavigate} onLogout={onLogout} currentPage={currentPage} onLoginClick={onLoginClick} />
 
       {currentPage === 'home' && (
         <>

@@ -3,10 +3,11 @@ import { Menu, X, ChevronDown, BookOpen, Trophy, GraduationCap, Calendar, MapPin
 import { UserProfile } from '../supabaseClient';
 
 interface NavbarProps {
-  user?: UserProfile;
+  user?: UserProfile | null;
   onLogout?: () => void;
   onNavigate?: (page: 'home' | 'activities' | 'documentation') => void;
   currentPage?: string;
+  onLoginClick?: () => void;
 }
 
 const navLinks = [
@@ -26,7 +27,7 @@ const navLinks = [
   { label: 'Acerca de', href: '#' },
 ];
 
-export function Navbar({ user, onLogout, onNavigate, currentPage }: NavbarProps) {
+export function Navbar({ user, onLogout, onNavigate, currentPage, onLoginClick }: NavbarProps) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
@@ -133,18 +134,18 @@ export function Navbar({ user, onLogout, onNavigate, currentPage }: NavbarProps)
                   <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-emerald-400 rounded-full"></span>
                 </button>
                 <div className="w-px h-5 bg-white/10 mx-1"></div>
-                <a
-                  href="#"
+                <button
+                  onClick={onLoginClick}
                   className="px-4 py-2 rounded-lg text-sm font-medium text-white/80 hover:text-white hover:bg-white/8 transition-all duration-200"
                 >
                   Ingresar
-                </a>
-                <a
-                  href="#"
+                </button>
+                <button
+                  onClick={onLoginClick}
                   className="px-4 py-2 rounded-lg text-sm font-semibold bg-emerald-500 hover:bg-emerald-400 text-white transition-all duration-200 shadow-lg shadow-emerald-500/25 hover:shadow-emerald-400/30"
                 >
                   Registrarse
-                </a>
+                </button>
               </>
             )}
           </div>
@@ -187,12 +188,12 @@ export function Navbar({ user, onLogout, onNavigate, currentPage }: NavbarProps)
                 </button>
               ) : (
                 <>
-                  <a href="#" className="px-4 py-3 rounded-xl text-sm font-medium text-center text-white/80 hover:bg-white/8 transition-all">
+                  <button onClick={() => { onLoginClick?.(); setMobileOpen(false); }} className="px-4 py-3 rounded-xl text-sm font-medium text-center text-white/80 hover:bg-white/8 transition-all">
                     Ingresar
-                  </a>
-                  <a href="#" className="px-4 py-3 rounded-xl text-sm font-semibold text-center bg-emerald-500 text-white hover:bg-emerald-400 transition-all shadow-lg shadow-emerald-500/25">
+                  </button>
+                  <button onClick={() => { onLoginClick?.(); setMobileOpen(false); }} className="w-full px-4 py-3 rounded-xl text-sm font-semibold text-center bg-emerald-500 text-white hover:bg-emerald-400 transition-all shadow-lg shadow-emerald-500/25">
                     Registrarse
-                  </a>
+                  </button>
                 </>
               )}
             </div>

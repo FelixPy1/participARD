@@ -3,7 +3,7 @@ import { ChevronDown, Database, Server, Lock, HardDrive, AlertCircle, BarChart3,
 import { UserProfile } from '../supabaseClient';
 
 interface DocumentationPageProps {
-  user?: UserProfile;
+  user?: UserProfile | null;
   onLogout?: () => void;
 }
 
