@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .animate-fadeIn {
+    animation: fadeIn 0.18s ease-out forwards;
+  }
+
+  @keyframes fall {
+    from {
+      transform: translateY(-100vh) translateX(0);
+      opacity: 0;
+    }
+    10% {
+      opacity: var(--particle-opacity, 1);
+    }
+    90% {
+      opacity: var(--particle-opacity, 1);
+    }
+    to {
+      transform: translateY(100vh) translateX(20px);
+      opacity: 0;
+    }
+  }
+  .animate-fall {
+    animation: fall linear infinite;
+  }
+
+  @keyframes drift {
+    0%, 100% {
+      transform: translateX(0) translateY(0);
+    }
+    25% {
+      transform: translateX(30px) translateY(-20px);
+    }
+    50% {
+      transform: translateX(-20px) translateY(-40px);
+    }
+    75% {
+      transform: translateX(15px) translateY(-30px);
+    }
+  }
+  .animate-drift {
+    animation: drift ease-in-out infinite;
+  }
+
+  .hover\:bg-white\/3:hover { background-color: rgba(255,255,255,0.03); }
+  .hover\:bg-white\/8:hover { background-color: rgba(255,255,255,0.08); }
+  .hover\:bg-white\/12:hover { background-color: rgba(255,255,255,0.12); }
+  .bg-white\/3  { background-color: rgba(255,255,255,0.03); }
+  .bg-white\/6  { background-color: rgba(255,255,255,0.06); }
+  .bg-white\/8  { background-color: rgba(255,255,255,0.08); }
+  .bg-white\/12 { background-color: rgba(255,255,255,0.12); }
+  .border-white\/6  { border-color: rgba(255,255,255,0.06); }
+  .border-white\/8  { border-color: rgba(255,255,255,0.08); }
+}
