@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Administración - ParticipARD</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        emerald: {
+                            400: '#34d399',
+                            500: '#10b981',
+                            600: '#059669',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="bg-[#080d1a] min-h-screen text-white font-sans antialiased overflow-x-hidden flex">
+
+    <!-- Sidebar -->
+    <aside class="glass-panel w-64 border-r border-white/10 flex flex-col h-screen fixed z-10">
+        <div class="p-6">
+            <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                <i data-lucide="shield" class="text-emerald-400"></i>
+                Admin Panel
+            </h2>
+        </div>
+        
+        <nav class="flex-1 px-4 space-y-2">
+            <button onclick="switchAdminTab('overview')" id="tab-overview" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all bg-emerald-500/10 text-emerald-400">
+                <i data-lucide="activity" class="w-5 h-5"></i>
+                Resumen
+            </button>
+            <button onclick="switchAdminTab('activities')" id="tab-activities" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all text-white/50 hover:bg-white/5 hover:text-white">
+                <i data-lucide="book-open" class="w-5 h-5"></i>
+                Actividades
+            </button>
+            <button onclick="switchAdminTab('users')" id="tab-users" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all text-white/50 hover:bg-white/5 hover:text-white">
+                <i data-lucide="users" class="w-5 h-5"></i>
+                Usuarios
+            </button>
+        </nav>
+
+        <div class="p-4 border-t border-white/10">
+            <div class="flex items-center gap-3 mb-4 px-2">
+                <div class="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-white font-bold text-sm">
+                    <span id="admin-avatar">A</span>
+                </div>
+                <div class="flex flex-col">
+                    <span id="admin-name" class="text-sm font-medium text-white">Admin</span>
+                    <span class="text-xs text-white/40">Institución</span>
+                </div>
+            </div>
+            <button onclick="logout()" class="w-full flex items-center justify-center gap-2 px-4 py-2 bg-white/5 hover:bg-red-500/10 hover:text-red-400 text-white/70 rounded-lg text-sm font-medium transition-all">
+                <i data-lucide="log-out" class="w-4 h-4"></i>
+                Cerrar Sesión
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 ml-64 p-8">
+        
+        <!-- Overview Tab -->
+        <div id="content-overview" class="admin-tab block">
+            <h1 class="text-3xl font-bold mb-8">Resumen General</h1>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="glass-card bg-white/5 border border-white/10 rounded-2xl p-6 relative overflow-hidden group">
+                    <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:text-emerald-400 group-hover:scale-110 transition-all duration-300">
+                        <i data-lucide="users" class="w-16 h-16"></i>
+                    </div>
+                    <h3 class="text-white/60 font-medium mb-2">Total Usuarios</h3>
+                    <p id="stat-users" class="text-4xl font-bold text-white glow-text">0</p>
+                </div>
+                <div class="glass-card bg-white/5 border border-white/10 rounded-2xl p-6 relative overflow-hidden group">
+                    <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:text-emerald-400 group-hover:scale-110 transition-all duration-300">
+                        <i data-lucide="book-open" class="w-16 h-16"></i>
+                    </div>
+                    <h3 class="text-white/60 font-medium mb-2">Total Actividades</h3>
+                    <p id="stat-activities" class="text-4xl font-bold text-white glow-text">0</p>
+                </div>
+            </div>
+            
+            <!-- Gráfico Resumen -->
+            <div class="mt-8 glass-panel border border-white/10 rounded-2xl p-6 shadow-[0_0_30px_rgba(16,185,129,0.05)]">
+                <h3 class="text-xl font-bold mb-6 text-white">Distribución de Usuarios</h3>
+                <div class="relative h-80 w-full">
+                    <canvas id="adminSummaryChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Activities Tab -->
+        <div id="content-activities" class="admin-tab hidden">
+            <div class="flex justify-between items-center mb-8">
+                <h1 class="text-3xl font-bold">Gestión de Actividades</h1>
+                <button onclick="openActivityModal()" class="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-lg text-sm font-medium transition-all">
+                    <i data-lucide="plus" class="w-4 h-4"></i>
+                    Nueva Actividad
+                </button>
+            </div>
+            
+            <div class="glass-panel border border-white/10 rounded-2xl overflow-hidden shadow-[0_0_30px_rgba(16,185,129,0.05)]">
+                <table class="w-full text-left">
+                    <thead class="bg-white/5 border-b border-white/10">
+                        <tr>
+                            <th class="px-6 py-4 text-sm font-medium text-white/60">Título</th>
+                            <th class="px-6 py-4 text-sm font-medium text-white/60">Tipo</th>
+                            <th class="px-6 py-4 text-sm font-medium text-white/60">Cierre</th>
+                            <th class="px-6 py-4 text-sm font-medium text-white/60 text-right">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="admin-activities-list" class="divide-y divide-white/10">
+                        <!-- Llenado via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Users Tab -->
+        <div id="content-users" class="admin-tab hidden">
+            <h1 class="text-3xl font-bold mb-8">Gestión de Usuarios</h1>
+            
+            <div class="glass-panel border border-white/10 rounded-2xl overflow-hidden shadow-[0_0_30px_rgba(16,185,129,0.05)]">
+                <table class="w-full text-left">
+                    <thead class="bg-white/5 border-b border-white/10">
+                        <tr>
+                            <th class="px-6 py-4 text-sm font-medium text-white/60">Nombre</th>
+                            <th class="px-6 py-4 text-sm font-medium text-white/60">Email</th>
+                            <th class="px-6 py-4 text-sm font-medium text-white/60">Rol</th>
+                            <th class="px-6 py-4 text-sm font-medium text-white/60 text-right">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="admin-users-list" class="divide-y divide-white/10">
+                        <!-- Llenado via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Modal de Actividad -->
+    <div id="activity-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+        <div class="glass-panel w-full max-w-2xl border border-white/10 rounded-2xl p-6 shadow-[0_0_50px_rgba(16,185,129,0.15)] relative max-h-[90vh] overflow-y-auto">
+            <button onclick="closeActivityModal()" class="absolute top-6 right-6 text-white/50 hover:text-white">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+            <h2 id="modal-activity-title" class="text-2xl font-bold mb-6">Nueva Actividad</h2>
+
+            <form id="activity-form" class="space-y-4">
+                <input type="hidden" id="act-id">
+                
+                <div>
+                    <label class="text-xs text-white/70 mb-1 block">Título</label>
+                    <input id="act-title" required type="text" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white">
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs text-white/70 mb-1 block">Tipo</label>
+                        <select id="act-type" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white">
+                            <option class="bg-[#0a0f1e]" value="becas">Beca</option>
+                            <option class="bg-[#0a0f1e]" value="olimpiadas">Olimpiada</option>
+                            <option class="bg-[#0a0f1e]" value="torneos">Torneo</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs text-white/70 mb-1 block">Fecha de Cierre</label>
+                        <input id="act-date" required type="date" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white" style="color-scheme: dark;">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs text-white/70 mb-1 block">Provincia</label>
+                        <input id="act-province" required type="text" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white">
+                    </div>
+                    <div>
+                        <label class="text-xs text-white/70 mb-1 block">Institución</label>
+                        <select id="act-institution" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white">
+                            <!-- Llenado via JS -->
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="text-xs text-white/70 mb-1 block">Localidad</label>
+                    <input id="act-location" required type="text" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white">
+                </div>
+
+                <div>
+                    <label class="text-xs text-white/70 mb-1 block">Descripción</label>
+                    <textarea id="act-desc" required rows="4" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white"></textarea>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-4 border-t border-white/10 mt-6">
+                    <button type="button" onclick="closeActivityModal()" class="px-4 py-2 rounded-lg font-medium text-white/70 hover:text-white hover:bg-white/5">Cancelar</button>
+                    <button type="submit" class="btn-premium px-6 py-2 rounded-lg font-medium bg-emerald-500 hover:bg-emerald-400 text-white shadow-[0_0_15px_rgba(16,185,129,0.3)]">Guardar</button>
+                </div>
+            </form>
+        </div>
+        </div>
+    </div>
+
+    <!-- Modal de Usuario (Edición) -->
+    <div id="user-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+        <div class="glass-panel w-full max-w-md border border-white/10 rounded-2xl p-6 shadow-[0_0_50px_rgba(16,185,129,0.15)] relative">
+            <button onclick="closeUserModal()" class="absolute top-6 right-6 text-white/50 hover:text-white">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+            <h2 id="modal-user-title" class="text-2xl font-bold mb-6">Editar Usuario</h2>
+
+            <form id="user-form" class="space-y-4">
+                <input type="hidden" id="user-id">
+                
+                <div>
+                    <label class="text-xs text-white/70 mb-1 block">Nombre Completo</label>
+                    <input id="user-fullname" required type="text" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white">
+                </div>
+
+                <div>
+                    <label class="text-xs text-white/70 mb-1 block">Correo Electrónico</label>
+                    <input id="user-email" required type="email" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white">
+                </div>
+                
+                <div>
+                    <label class="text-xs text-white/70 mb-1 block">Rol del Usuario</label>
+                    <select id="user-role" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white">
+                        <option class="bg-[#0a0f1e]" value="Rol_Estudiantes">Estudiante</option>
+                        <option class="bg-[#0a0f1e]" value="Rol_Administradores">Administrador</option>
+                    </select>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-4 border-t border-white/10 mt-6">
+                    <button type="button" onclick="closeUserModal()" class="px-4 py-2 rounded-lg font-medium text-white/70 hover:text-white hover:bg-white/5">Cancelar</button>
+                    <button type="submit" class="btn-premium px-6 py-2 rounded-lg font-medium bg-emerald-500 hover:bg-emerald-400 text-white shadow-[0_0_15px_rgba(16,185,129,0.3)]">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/static/js/main.js"></script>
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+</html>

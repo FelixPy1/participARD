@@ -1,0 +1,137 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .animate-fadeIn {
+    animation: fadeIn 0.18s ease-out forwards;
+  }
+
+  @keyframes fall {
+    from {
+      transform: translateY(-100vh) translateX(0);
+      opacity: 0;
+    }
+    10% {
+      opacity: var(--particle-opacity, 1);
+    }
+    90% {
+      opacity: var(--particle-opacity, 1);
+    }
+    to {
+      transform: translateY(100vh) translateX(20px);
+      opacity: 0;
+    }
+  }
+  .animate-fall {
+    animation: fall linear infinite;
+  }
+
+  @keyframes drift {
+    0%, 100% {
+      transform: translateX(0) translateY(0);
+    }
+    25% {
+      transform: translateX(30px) translateY(-20px);
+    }
+    50% {
+      transform: translateX(-20px) translateY(-40px);
+    }
+    75% {
+      transform: translateX(15px) translateY(-30px);
+    }
+  }
+  .animate-drift {
+    animation: drift ease-in-out infinite;
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-20px); }
+  }
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  @keyframes floatReverse {
+    0%, 100% { transform: translateY(0) rotate(-6deg); }
+    50% { transform: translateY(15px) rotate(-6deg); }
+  }
+  .animate-floatReverse {
+    animation: floatReverse 8s ease-in-out infinite;
+  }
+
+  /* Premium Micro-Animations and Glassmorphism */
+  .glass-panel {
+    background: rgba(10, 15, 30, 0.7);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  }
+
+  .glass-card {
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .glass-card:hover {
+    border-color: rgba(52, 211, 153, 0.3);
+    box-shadow: 0 8px 32px rgba(16, 185, 129, 0.15);
+    transform: translateY(-4px);
+  }
+
+  .glow-text {
+    text-shadow: 0 0 20px rgba(52, 211, 153, 0.4);
+  }
+
+  .btn-premium {
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+  }
+  
+  .btn-premium::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(
+      to right,
+      rgba(255,255,255,0) 0%,
+      rgba(255,255,255,0.3) 50%,
+      rgba(255,255,255,0) 100%
+    );
+    transform: rotate(30deg);
+    transition: all 0.5s ease;
+    opacity: 0;
+  }
+  
+  .btn-premium:hover::after {
+    animation: shine 1.5s infinite;
+    opacity: 1;
+  }
+
+  @keyframes shine {
+    0% { transform: translateX(-100%) rotate(30deg); }
+    100% { transform: translateX(100%) rotate(30deg); }
+  }
+
+  .hover\:bg-white\/3:hover { background-color: rgba(255,255,255,0.03); }
+  .hover\:bg-white\/8:hover { background-color: rgba(255,255,255,0.08); }
+  .hover\:bg-white\/12:hover { background-color: rgba(255,255,255,0.12); }
+  .bg-white\/3  { background-color: rgba(255,255,255,0.03); }
+  .bg-white\/6  { background-color: rgba(255,255,255,0.06); }
+  .bg-white\/8  { background-color: rgba(255,255,255,0.08); }
+  .bg-white\/12 { background-color: rgba(255,255,255,0.12); }
+  .border-white\/6  { border-color: rgba(255,255,255,0.06); }
+  .border-white\/8  { border-color: rgba(255,255,255,0.08); }
+}

@@ -66,9 +66,11 @@ CREATE TABLE tblActividades (
     ActividadID INT IDENTITY(1,1) PRIMARY KEY,
     Titulo VARCHAR(200) NOT NULL,
     Descripcion TEXT NOT NULL,
-    Tipo VARCHAR(50) NOT NULL, -- Beca, Concurso, etc.
+    Tipo VARCHAR(50) NOT NULL, -- becas, olimpiadas, torneos, etc.
     FechaCierre DATETIME NOT NULL,
-    InstitucionID INT NOT NULL FOREIGN KEY REFERENCES tblInstituciones(InstitucionID)
+    InstitucionID INT NOT NULL FOREIGN KEY REFERENCES tblInstituciones(InstitucionID),
+    Localidad VARCHAR(100) NULL,
+    Provincia VARCHAR(100) NULL
 );
 
 -- 6. Tabla Inscripciones
@@ -87,6 +89,27 @@ CREATE TABLE tblAuditoria_Actividades (
     UsuarioModificador VARCHAR(100),
     FechaModificacion DATETIME DEFAULT GETDATE()
 );
+GO
+
+-- =================================================================================
+-- INSERTAR DATOS DE PRUEBA (Instituciones, Roles y Actividades reales/internacionales)
+-- =================================================================================
+INSERT INTO tblRoles (NombreRol) VALUES 
+('Rol_Estudiantes'),
+('Rol_Administradores');
+
+INSERT INTO tblInstituciones (Nombre, Tipo) VALUES 
+('Ministerio de Educación (MINERD)', 'Ministerio'),
+('Instituto Tecnológico de las Américas (ITLA)', 'Instituto'),
+('Olimpiadas Internacionales de Matemáticas', 'Internacional'),
+('Fundación Carolina', 'Internacional');
+
+INSERT INTO tblActividades (Titulo, Descripcion, Tipo, FechaCierre, InstitucionID, Localidad, Provincia) VALUES 
+('Olimpiada Nacional de Matemáticas', 'Competencia para estudiantes de secundaria de toda la República Dominicana.', 'olimpiadas', '2026-12-31', 1, 'Múltiples Sedes', 'Santo Domingo'),
+('Beca de Software Engineering', 'Beca completa para estudiar ingeniería de software.', 'becas', '2026-10-15', 2, 'Boca Chica', 'Santo Domingo'),
+('Torneo Escolar de Ajedrez', 'Torneo regional de ajedrez escolar.', 'torneos', '2026-08-20', 1, 'Santiago de los Caballeros', 'Santiago'),
+('Olimpiada Internacional IMO', 'Competencia internacional de matemáticas para jóvenes talentos de todos los países.', 'olimpiadas', '2026-11-01', 3, 'Internacional', 'Internacional'),
+('Beca Internacional Fundación Carolina', 'Becas para estudios de postgrado y maestría para estudiantes Iberoamericanos.', 'becas', '2026-09-30', 4, 'Online/España', 'Internacional');
 GO
 
 -- =================================================================================
