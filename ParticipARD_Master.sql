@@ -96,7 +96,8 @@ GO
 -- =================================================================================
 INSERT INTO tblRoles (NombreRol) VALUES 
 ('Rol_Estudiantes'),
-('Rol_Administradores');
+('Rol_Administradores'),
+('Rol_Editores');
 
 INSERT INTO tblInstituciones (Nombre, Tipo) VALUES 
 ('Ministerio de Educación (MINERD)', 'Ministerio'),

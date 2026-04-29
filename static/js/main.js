@@ -138,11 +138,9 @@ function updateAuthForm() {
     
     if (isLoginMode) {
         document.getElementById('group-name').classList.add('hidden');
-        document.getElementById('group-role').classList.add('hidden');
         document.getElementById('auth-name').removeAttribute('required');
     } else {
         document.getElementById('group-name').classList.remove('hidden');
-        document.getElementById('group-role').classList.remove('hidden');
         document.getElementById('auth-name').setAttribute('required', 'true');
     }
 }
@@ -156,7 +154,7 @@ if (authForm) {
         const email = document.getElementById('auth-email').value;
         const password = document.getElementById('auth-password').value;
         const fullName = document.getElementById('auth-name').value;
-        const role = document.getElementById('auth-role').value;
+        const role = 'Rol_Estudiantes';
         
         const endpoint = isLoginMode ? '/auth/login' : '/auth/register';
         const body = isLoginMode ? { email, password } : { email, password, fullName, role };
@@ -339,9 +337,15 @@ function switchAdminTab(tab) {
 async function loadAdminData() {
     if (!window.location.pathname.includes('admin')) return;
     
-    if (!currentUser || currentUser.role !== 'Rol_Administradores') {
+    if (!currentUser || (currentUser.role !== 'Rol_Administradores' && currentUser.role !== 'Rol_Editores')) {
         window.location.href = '/';
         return;
+    }
+
+    // Hide users tab for editors
+    if (currentUser.role === 'Rol_Editores') {
+        const tabUsersBtn = document.getElementById('tab-users');
+        if (tabUsersBtn) tabUsersBtn.classList.add('hidden');
     }
 
     document.getElementById('admin-avatar').innerText = currentUser.fullName ? currentUser.fullName[0].toUpperCase() : 'A';
@@ -522,8 +526,10 @@ function renderAdminChart(users) {
     // Contar usuarios por rol
     let admins = 0;
     let estudiantes = 0;
+    let editores = 0;
     users.forEach(u => {
         if (u.role === 'Rol_Administradores') admins++;
+        else if (u.role === 'Rol_Editores') editores++;
         else estudiantes++;
     });
 
@@ -534,15 +540,17 @@ function renderAdminChart(users) {
     adminChart = new Chart(ctx, {
         type: 'doughnut',
         data: {
-            labels: ['Administradores', 'Estudiantes'],
+            labels: ['Administradores', 'Editores', 'Estudiantes'],
             datasets: [{
-                data: [admins, estudiantes],
+                data: [admins, editores, estudiantes],
                 backgroundColor: [
                     'rgba(16, 185, 129, 0.8)', // Emerald
+                    'rgba(245, 158, 11, 0.8)', // Amber
                     'rgba(59, 130, 246, 0.8)'  // Blue
                 ],
                 borderColor: [
                     'rgba(16, 185, 129, 1)',
+                    'rgba(245, 158, 11, 1)',
                     'rgba(59, 130, 246, 1)'
                 ],
                 borderWidth: 1,
