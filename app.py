@@ -19,7 +19,16 @@ DB_DRIVER = os.getenv('DB_DRIVER', '{ODBC Driver 18 for SQL Server}')
 DB_SERVER = os.getenv('DB_SERVER', 'ALEXANDER')
 DB_NAME = os.getenv('DB_NAME', 'ParticipARD_DB')
 
-conn_str = f"DRIVER={DB_DRIVER};SERVER={DB_SERVER};DATABASE={DB_NAME};Trusted_Connection=yes;TrustServerCertificate=yes;"
+conn_str = (
+    "DRIVER={ODBC Driver 18 for SQL Server};"
+    "SERVER=100.117.127.91,1433;"
+    "DATABASE=ParticipARD_DB;"
+    "UID=amigo;"
+    "PWD=123456;"
+    "Encrypt=no;"
+    "TrustServerCertificate=yes;"
+)
+
 
 # SMTP Configuration
 SMTP_SERVER = os.getenv('SMTP_SERVER', 'smtp.gmail.com')
