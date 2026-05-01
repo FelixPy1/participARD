@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel de Administración - ParticipARD</title>
+    <title>Panel de Administración - ParticipaRD</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -29,6 +29,9 @@
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
+    <!-- Cloudinary Widget -->
+    <script src="https://widget.cloudinary.com/v2.0/global/all.js" type="text/javascript"></script>
+    
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body class="bg-[#080d1a] min-h-screen text-white font-sans antialiased overflow-x-hidden flex">
@@ -36,7 +39,7 @@
     <!-- Sidebar -->
     <aside class="glass-panel w-64 border-r border-white/10 flex flex-col h-screen fixed z-10">
         <div class="p-6">
-            <h2 id="admin-panel-title" class="text-xl font-bold text-white flex items-center gap-2">
+            <h2 class="text-xl font-bold text-white flex items-center gap-2">
                 <i data-lucide="shield" class="text-emerald-400"></i>
                 Admin Panel
             </h2>
@@ -67,10 +70,6 @@
                     <span class="text-xs text-white/40">Institución</span>
                 </div>
             </div>
-            <button onclick="toggleLightMode()" class="w-full flex items-center justify-center gap-2 px-4 py-2 mb-2 bg-white/5 hover:bg-white/10 text-white/70 rounded-lg text-sm font-medium transition-all">
-                <i data-lucide="moon" id="theme-icon" class="w-4 h-4"></i>
-                <span id="theme-text">Modo Claro</span>
-            </button>
             <button onclick="logout()" class="w-full flex items-center justify-center gap-2 px-4 py-2 bg-white/5 hover:bg-red-500/10 hover:text-red-400 text-white/70 rounded-lg text-sm font-medium transition-all">
                 <i data-lucide="log-out" class="w-4 h-4"></i>
                 Cerrar Sesión
@@ -139,13 +138,7 @@
 
         <!-- Users Tab -->
         <div id="content-users" class="admin-tab hidden">
-            <div class="flex justify-between items-center mb-8">
-                <h1 class="text-3xl font-bold">Gestión de Usuarios</h1>
-                <button onclick="openCreateUserModal()" class="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-lg text-sm font-medium transition-all">
-                    <i data-lucide="user-plus" class="w-4 h-4"></i>
-                    Nuevo Usuario
-                </button>
-            </div>
+            <h1 class="text-3xl font-bold mb-8">Gestión de Usuarios</h1>
             
             <div class="glass-panel border border-white/10 rounded-2xl overflow-hidden shadow-[0_0_30px_rgba(16,185,129,0.05)]">
                 <table class="w-full text-left">
@@ -220,6 +213,21 @@
                     <textarea id="act-desc" required rows="4" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white"></textarea>
                 </div>
 
+                <div>
+                    <label class="text-xs text-white/70 mb-1 block">Imagen de Portada (Opcional)</label>
+                    <input type="hidden" id="act-image">
+                    <div class="flex items-center gap-4 mt-2">
+                        <button type="button" id="upload_widget" class="px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/10 rounded-lg text-sm text-white transition-all flex items-center gap-2">
+                            <i data-lucide="image" class="w-4 h-4"></i>
+                            Subir Imagen
+                        </button>
+                        <div id="image-preview-container" class="hidden flex items-center gap-3">
+                            <img id="image-preview" src="" alt="Vista previa" class="h-12 w-20 object-cover rounded border border-white/20">
+                            <button type="button" onclick="removeImage()" class="text-xs text-red-400 hover:text-red-300">Quitar</button>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="flex justify-end gap-3 pt-4 border-t border-white/10 mt-6">
                     <button type="button" onclick="closeActivityModal()" class="px-4 py-2 rounded-lg font-medium text-white/70 hover:text-white hover:bg-white/5">Cancelar</button>
                     <button type="submit" class="btn-premium px-6 py-2 rounded-lg font-medium bg-emerald-500 hover:bg-emerald-400 text-white shadow-[0_0_15px_rgba(16,185,129,0.3)]">Guardar</button>
@@ -248,11 +256,6 @@
                 <div>
                     <label class="text-xs text-white/70 mb-1 block">Correo Electrónico</label>
                     <input id="user-email" required type="email" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white">
-                </div>
-                
-                <div id="user-password-container" class="hidden">
-                    <label class="text-xs text-white/70 mb-1 block">Contraseña</label>
-                    <input id="user-password" type="password" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white">
                 </div>
                 
                 <div>
