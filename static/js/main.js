@@ -226,6 +226,24 @@ async function fetchActivities(type = 'all') {
                 document.getElementById('hero-sub-type').innerText = subAct.type_id || 'Actividad';
                 document.getElementById('hero-sub-title').innerText = subAct.title;
             }
+            
+            // Populate dynamic filter buttons based on available activity types
+            const uniqueTypes = [...new Set(activities.map(a => a.type_id))];
+            const filtersContainer = document.getElementById('filters-container');
+            if (filtersContainer) {
+                filtersContainer.innerHTML = `
+                    <select onchange="filterActivities(this.value)" class="w-full bg-[#0a0f1e]/80 backdrop-blur-md border border-white/10 rounded-xl px-4 py-3 text-white font-medium focus:outline-none focus:border-emerald-500/50 appearance-none cursor-pointer hover:bg-white/5 transition-all shadow-lg shadow-black/20">
+                        <option class="bg-[#0a0f1e]" value="all">Todas las categorías</option>
+                        ${uniqueTypes.map(t => `
+                            <option class="bg-[#0a0f1e]" value="${t}">${t}</option>
+                        `).join('')}
+                    </select>
+                    <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-emerald-400">
+                        <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                    </div>
+                `;
+                if (window.lucide) window.lucide.createIcons();
+            }
         }
 
         const grid = document.getElementById('activities-grid');
@@ -294,10 +312,6 @@ async function fetchActivities(type = 'all') {
 }
 
 function filterActivities(type) {
-    document.querySelectorAll('.filter-btn').forEach(btn => {
-        btn.className = "filter-btn px-4 py-2 rounded-xl text-sm font-medium transition-all bg-white/5 text-white/70 hover:bg-white/10 border border-white/10";
-    });
-    event.target.className = "filter-btn px-4 py-2 rounded-xl text-sm font-medium transition-all bg-emerald-500 text-white shadow-lg shadow-emerald-500/25";
     fetchActivities(type);
 }
 
@@ -427,6 +441,13 @@ async function loadAdminData() {
             </tr>
         `).join('');
         
+        // Fill Activity Types Datalist dynamically
+        const uniqueTypes = [...new Set(activities.map(a => a.type_id))];
+        const typesDatalist = document.getElementById('activity-types-list');
+        if (typesDatalist) {
+            typesDatalist.innerHTML = uniqueTypes.map(t => `<option value="${t}"></option>`).join('');
+        }
+
         // Fill Institution Select removed as it is now free-text
 
         if (window.lucide) window.lucide.createIcons();

@@ -178,11 +178,13 @@
                         <p class="text-white/60 text-lg max-w-2xl">Descubre becas, olimpiadas y torneos disponibles para ti.</p>
                     </div>
                     <!-- Filtros -->
-                    <div class="flex flex-wrap gap-3" id="filters-container">
-                        <button onclick="filterActivities('all')" class="filter-btn px-4 py-2 rounded-xl text-sm font-medium transition-all bg-emerald-500 text-white shadow-lg shadow-emerald-500/25">Todos</button>
-                        <button onclick="filterActivities('becas')" class="filter-btn px-4 py-2 rounded-xl text-sm font-medium transition-all bg-white/5 text-white/70 hover:bg-white/10 border border-white/10">Becas</button>
-                        <button onclick="filterActivities('olimpiadas')" class="filter-btn px-4 py-2 rounded-xl text-sm font-medium transition-all bg-white/5 text-white/70 hover:bg-white/10 border border-white/10">Olimpiadas</button>
-                        <button onclick="filterActivities('torneos')" class="filter-btn px-4 py-2 rounded-xl text-sm font-medium transition-all bg-white/5 text-white/70 hover:bg-white/10 border border-white/10">Torneos</button>
+                    <div id="filters-container" class="relative w-full md:w-64 z-10">
+                        <select onchange="filterActivities(this.value)" class="w-full bg-[#0a0f1e]/80 backdrop-blur-md border border-white/10 rounded-xl px-4 py-3 text-white font-medium focus:outline-none focus:border-emerald-500/50 appearance-none cursor-pointer hover:bg-white/5 transition-all shadow-lg shadow-black/20">
+                            <option class="bg-[#0a0f1e]" value="all">Todas las categorías</option>
+                        </select>
+                        <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-emerald-400">
+                            <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                        </div>
                     </div>
                 </div>
 

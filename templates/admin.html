@@ -184,7 +184,10 @@
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="text-xs text-white/70 mb-1 block">Tipo de Actividad</label>
-                        <input id="act-type" required type="text" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white" placeholder="Ej. Beca, Olimpiada, Torneo...">
+                        <input id="act-type" list="activity-types-list" required type="text" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white" placeholder="Ej. Beca, Olimpiada, Torneo...">
+                        <datalist id="activity-types-list">
+                            <!-- Opciones llenadas por JS -->
+                        </datalist>
                     </div>
                     <div>
                         <label class="text-xs text-white/70 mb-1 block">Fecha de Cierre</label>
