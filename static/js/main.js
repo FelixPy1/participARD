@@ -128,7 +128,7 @@ function toggleAuthMode() {
 }
 
 function updateAuthForm() {
-    document.getElementById('auth-title').innerText = isLoginMode ? 'Bienvenido de nuevo' : 'Únete a participARD';
+    document.getElementById('auth-title').innerText = isLoginMode ? 'Bienvenido de nuevo' : 'Únete a ParticipaRD';
     const subtitle = document.getElementById('auth-subtitle');
     subtitle.innerText = isLoginMode ? 'Ingresa tus credenciales para continuar.' : 'Comienza a transformar tu futuro hoy mismo.';
     subtitle.classList.remove("text-emerald-400");
