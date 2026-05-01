@@ -246,11 +246,23 @@ def create_activity():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
+        institution_name = data.get('InstitucionNombre')
+        if institution_name:
+            cursor.execute("SELECT InstitucionID FROM tblInstituciones WHERE Nombre = ?", (institution_name,))
+            row = cursor.fetchone()
+            if row:
+                inst_id = row[0]
+            else:
+                cursor.execute("INSERT INTO tblInstituciones (Nombre, Tipo) OUTPUT inserted.InstitucionID VALUES (?, ?)", (institution_name, 'Otra'))
+                inst_id = cursor.fetchone()[0]
+        else:
+            inst_id = 1
+            
         cursor.execute("""
             INSERT INTO tblActividades (Titulo, Descripcion, Tipo, FechaCierre, InstitucionID, Localidad, Provincia, ImagenURL)
             OUTPUT inserted.ActividadID
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (data.get('Titulo'), data.get('Descripcion'), data.get('Tipo'), data.get('FechaCierre'), data.get('InstitucionID', 1), data.get('Localidad'), data.get('Provincia'), data.get('ImagenURL')))
+        """, (data.get('Titulo'), data.get('Descripcion'), data.get('Tipo'), data.get('FechaCierre'), inst_id, data.get('Localidad'), None, data.get('ImagenURL')))
         
         new_activity_id = cursor.fetchone()[0]
         conn.commit()
@@ -289,12 +301,24 @@ def update_activity(id):
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
+        institution_name = data.get('InstitucionNombre')
+        if institution_name:
+            cursor.execute("SELECT InstitucionID FROM tblInstituciones WHERE Nombre = ?", (institution_name,))
+            row = cursor.fetchone()
+            if row:
+                inst_id = row[0]
+            else:
+                cursor.execute("INSERT INTO tblInstituciones (Nombre, Tipo) OUTPUT inserted.InstitucionID VALUES (?, ?)", (institution_name, 'Otra'))
+                inst_id = cursor.fetchone()[0]
+        else:
+            inst_id = 1
+
         cursor.execute("""
             UPDATE tblActividades 
             SET Titulo=?, Descripcion=?, Tipo=?, FechaCierre=?, Localidad=?, Provincia=?, InstitucionID=?, ImagenURL=?
             WHERE ActividadID=?
         """, (data.get('Titulo'), data.get('Descripcion'), data.get('Tipo'), data.get('FechaCierre'), 
-              data.get('Localidad'), data.get('Provincia'), data.get('InstitucionID', 1), data.get('ImagenURL'), id))
+              data.get('Localidad'), None, inst_id, data.get('ImagenURL'), id))
         conn.commit()
         conn.close()
         return jsonify({"message": "Actividad actualizada"}), 200

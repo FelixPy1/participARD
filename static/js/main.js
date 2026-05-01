@@ -427,11 +427,7 @@ async function loadAdminData() {
             </tr>
         `).join('');
         
-        // Fill Institution Select
-        const instSelect = document.getElementById('act-institution');
-        if (instSelect) {
-            instSelect.innerHTML = adminInstitutions.map(i => `<option class="bg-[#0a0f1e]" value="${i.id}">${i.name}</option>`).join('');
-        }
+        // Fill Institution Select removed as it is now free-text
 
         if (window.lucide) window.lucide.createIcons();
         initCloudinary();
@@ -497,9 +493,8 @@ function editActivity(act) {
     document.getElementById('act-desc').value = act.description;
     document.getElementById('act-type').value = act.type_id;
     document.getElementById('act-date').value = act.end_date.split('T')[0];
-    document.getElementById('act-province').value = act.province;
     document.getElementById('act-location').value = act.location;
-    document.getElementById('act-institution').value = act.institution_id || (adminInstitutions[0]?.id || 1);
+    document.getElementById('act-institution').value = act.institution_name || '';
     
     if (act.image_url) {
         document.getElementById('act-image').value = act.image_url;
@@ -523,9 +518,8 @@ if (actForm) {
             Descripcion: document.getElementById('act-desc').value,
             Tipo: document.getElementById('act-type').value,
             FechaCierre: document.getElementById('act-date').value,
-            Provincia: document.getElementById('act-province').value,
             Localidad: document.getElementById('act-location').value,
-            InstitucionID: Number(document.getElementById('act-institution').value),
+            InstitucionNombre: document.getElementById('act-institution').value,
             ImagenURL: document.getElementById('act-image').value || null
         };
 
