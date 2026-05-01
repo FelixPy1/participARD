@@ -173,7 +173,8 @@ def get_activities():
                    i.Nombre as institution_name, i.InstitucionID as institution_id,
                    'Activa' as status,
                    ISNULL(a.Localidad, 'No especificada') as location,
-                   ISNULL(a.Provincia, 'N/A') as province
+                   ISNULL(a.Provincia, 'N/A') as province,
+                   a.ImagenURL as image_url
             FROM tblActividades a
             JOIN tblInstituciones i ON a.InstitucionID = i.InstitucionID
             WHERE a.FechaCierre >= GETDATE()
@@ -246,10 +247,10 @@ def create_activity():
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute("""
-            INSERT INTO tblActividades (Titulo, Descripcion, Tipo, FechaCierre, InstitucionID, Localidad, Provincia)
+            INSERT INTO tblActividades (Titulo, Descripcion, Tipo, FechaCierre, InstitucionID, Localidad, Provincia, ImagenURL)
             OUTPUT inserted.ActividadID
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (data.get('Titulo'), data.get('Descripcion'), data.get('Tipo'), data.get('FechaCierre'), data.get('InstitucionID', 1), data.get('Localidad'), data.get('Provincia')))
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (data.get('Titulo'), data.get('Descripcion'), data.get('Tipo'), data.get('FechaCierre'), data.get('InstitucionID', 1), data.get('Localidad'), data.get('Provincia'), data.get('ImagenURL')))
         
         new_activity_id = cursor.fetchone()[0]
         conn.commit()
@@ -290,10 +291,10 @@ def update_activity(id):
         cursor = conn.cursor()
         cursor.execute("""
             UPDATE tblActividades 
-            SET Titulo=?, Descripcion=?, Tipo=?, FechaCierre=?, Localidad=?, Provincia=?, InstitucionID=?
+            SET Titulo=?, Descripcion=?, Tipo=?, FechaCierre=?, Localidad=?, Provincia=?, InstitucionID=?, ImagenURL=?
             WHERE ActividadID=?
         """, (data.get('Titulo'), data.get('Descripcion'), data.get('Tipo'), data.get('FechaCierre'), 
-              data.get('Localidad'), data.get('Provincia'), data.get('InstitucionID', 1), id))
+              data.get('Localidad'), data.get('Provincia'), data.get('InstitucionID', 1), data.get('ImagenURL'), id))
         conn.commit()
         conn.close()
         return jsonify({"message": "Actividad actualizada"}), 200
