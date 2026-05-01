@@ -36,7 +36,7 @@
     <!-- Sidebar -->
     <aside class="glass-panel w-64 border-r border-white/10 flex flex-col h-screen fixed z-10">
         <div class="p-6">
-            <h2 class="text-xl font-bold text-white flex items-center gap-2">
+            <h2 id="admin-panel-title" class="text-xl font-bold text-white flex items-center gap-2">
                 <i data-lucide="shield" class="text-emerald-400"></i>
                 Admin Panel
             </h2>
@@ -67,6 +67,10 @@
                     <span class="text-xs text-white/40">Institución</span>
                 </div>
             </div>
+            <button onclick="toggleLightMode()" class="w-full flex items-center justify-center gap-2 px-4 py-2 mb-2 bg-white/5 hover:bg-white/10 text-white/70 rounded-lg text-sm font-medium transition-all">
+                <i data-lucide="moon" id="theme-icon" class="w-4 h-4"></i>
+                <span id="theme-text">Modo Claro</span>
+            </button>
             <button onclick="logout()" class="w-full flex items-center justify-center gap-2 px-4 py-2 bg-white/5 hover:bg-red-500/10 hover:text-red-400 text-white/70 rounded-lg text-sm font-medium transition-all">
                 <i data-lucide="log-out" class="w-4 h-4"></i>
                 Cerrar Sesión
@@ -135,7 +139,13 @@
 
         <!-- Users Tab -->
         <div id="content-users" class="admin-tab hidden">
-            <h1 class="text-3xl font-bold mb-8">Gestión de Usuarios</h1>
+            <div class="flex justify-between items-center mb-8">
+                <h1 class="text-3xl font-bold">Gestión de Usuarios</h1>
+                <button onclick="openCreateUserModal()" class="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-lg text-sm font-medium transition-all">
+                    <i data-lucide="user-plus" class="w-4 h-4"></i>
+                    Nuevo Usuario
+                </button>
+            </div>
             
             <div class="glass-panel border border-white/10 rounded-2xl overflow-hidden shadow-[0_0_30px_rgba(16,185,129,0.05)]">
                 <table class="w-full text-left">
@@ -238,6 +248,11 @@
                 <div>
                     <label class="text-xs text-white/70 mb-1 block">Correo Electrónico</label>
                     <input id="user-email" required type="email" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white">
+                </div>
+                
+                <div id="user-password-container" class="hidden">
+                    <label class="text-xs text-white/70 mb-1 block">Contraseña</label>
+                    <input id="user-password" type="password" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white">
                 </div>
                 
                 <div>

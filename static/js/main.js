@@ -60,12 +60,45 @@ function checkAuth() {
     if (storedUser) {
         currentUser = JSON.parse(storedUser);
         
-        // Si es admin y estamos en index.html, redirigir
-        if (currentUser.role === 'Rol_Administradores' && !window.location.pathname.includes('admin')) {
+        // Si es admin o editor y estamos en index.html, redirigir
+        if ((currentUser.role === 'Rol_Administradores' || currentUser.role === 'Rol_Editores') && !window.location.pathname.includes('admin')) {
             window.location.href = '/admin'; 
         }
     }
     updateNavbar();
+}
+
+function checkTheme() {
+    const isLight = localStorage.getItem('theme') === 'light';
+    if (isLight) {
+        document.body.classList.add('light-mode');
+        updateThemeUI(true);
+    }
+}
+
+function updateThemeUI(isLight) {
+    const themeIcon = document.getElementById('theme-icon');
+    const themeText = document.getElementById('theme-text');
+    if (themeIcon && themeText) {
+        if (isLight) {
+            themeIcon.setAttribute('data-lucide', 'sun');
+            themeText.innerText = 'Modo Oscuro';
+        } else {
+            themeIcon.setAttribute('data-lucide', 'moon');
+            themeText.innerText = 'Modo Claro';
+        }
+        if (window.lucide) window.lucide.createIcons();
+    }
+}
+
+function toggleLightMode() {
+    const isLight = document.body.classList.toggle('light-mode');
+    localStorage.setItem('theme', isLight ? 'light' : 'dark');
+    updateThemeUI(isLight);
+    // Refresh chart if exists and is admin
+    if (window.location.pathname.includes('admin') && typeof loadAdminData === 'function') {
+        loadAdminData();
+    }
 }
 
 function updateNavbar() {
@@ -80,9 +113,12 @@ function updateNavbar() {
                 </div>
                 <div class="flex flex-col">
                     <span class="text-white text-sm font-medium leading-none">${currentUser.fullName}</span>
-                    <span class="text-white/40 text-[10px] uppercase font-bold mt-0.5">${currentUser.role === 'Rol_Administradores' ? 'Admin' : 'Estudiante'}</span>
+                    <span class="text-white/40 text-[10px] uppercase font-bold mt-0.5">${currentUser.role === 'Rol_Administradores' ? 'Admin' : (currentUser.role === 'Rol_Editores' ? 'Editor' : 'Estudiante')}</span>
                 </div>
             </div>
+            <button onclick="toggleLightMode()" class="p-2 rounded-lg text-white/80 hover:text-white hover:bg-white/8 transition-all duration-200" title="Alternar Tema">
+                <i data-lucide="sun-moon" class="w-5 h-5"></i>
+            </button>
             <button onclick="logout()" class="px-4 py-2 rounded-lg text-sm font-medium text-white/80 hover:text-white hover:bg-white/8 transition-all duration-200 flex items-center gap-2">
                 <i data-lucide="log-out" class="w-4 h-4"></i> Salir
             </button>
@@ -348,6 +384,14 @@ async function loadAdminData() {
         if (tabUsersBtn) tabUsersBtn.classList.add('hidden');
     }
 
+    // Change panel title if editor
+    if (currentUser.role === 'Rol_Editores') {
+        const panelTitle = document.getElementById('admin-panel-title');
+        if (panelTitle) {
+            panelTitle.innerHTML = `<i data-lucide="edit" class="text-emerald-400"></i> Editor Panel`;
+        }
+    }
+
     document.getElementById('admin-avatar').innerText = currentUser.fullName ? currentUser.fullName[0].toUpperCase() : 'A';
     document.getElementById('admin-name').innerText = currentUser.fullName;
 
@@ -479,12 +523,26 @@ async function deleteUser(id) {
     }
 }
 
+function openCreateUserModal() {
+    document.getElementById('user-form').reset();
+    document.getElementById('user-id').value = '';
+    document.getElementById('user-password-container').classList.remove('hidden');
+    document.getElementById('user-password').setAttribute('required', 'true');
+    document.getElementById('modal-user-title').innerText = 'Nuevo Usuario';
+    document.getElementById('user-modal').classList.remove('hidden');
+}
+
 // User Modal Logic
 function openEditUserModal(user) {
     document.getElementById('user-id').value = user.id;
     document.getElementById('user-fullname').value = user.full_name;
     document.getElementById('user-email').value = user.email;
     document.getElementById('user-role').value = user.role;
+    
+    document.getElementById('user-password-container').classList.add('hidden');
+    document.getElementById('user-password').removeAttribute('required');
+    document.getElementById('modal-user-title').innerText = 'Editar Usuario';
+    
     document.getElementById('user-modal').classList.remove('hidden');
 }
 
@@ -498,20 +556,41 @@ if (userForm) {
         e.preventDefault();
         const id = document.getElementById('user-id').value;
         const body = {
-            FullName: document.getElementById('user-fullname').value,
-            Email: document.getElementById('user-email').value,
-            RolID: document.getElementById('user-role').value
+            fullName: document.getElementById('user-fullname').value,
+            email: document.getElementById('user-email').value,
+            role: document.getElementById('user-role').value,
+            password: document.getElementById('user-password').value
+        };
+        // Para update_user se usan otras keys (FullName, Email, RolID)
+        const updateBody = {
+            FullName: body.fullName,
+            Email: body.email,
+            RolID: body.role
         };
 
         try {
-            await fetch(`${API_URL}/users/${id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
-            });
+            if (id) {
+                // Update
+                await fetch(`${API_URL}/users/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updateBody)
+                });
+            } else {
+                // Create
+                const res = await fetch(`${API_URL}/auth/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error);
+                alert('Usuario creado exitosamente');
+            }
             closeUserModal();
             loadAdminData();
         } catch (err) {
+            alert(err.message || 'Error al guardar el usuario');
             console.error(err);
         }
     });
@@ -613,14 +692,15 @@ function initParticles() {
 // ==========================================
 
 document.addEventListener('DOMContentLoaded', () => {
+    checkTheme();
     checkAuth();
     initParticles();
     
     if (window.location.pathname.includes('admin')) {
         loadAdminData();
     } else {
-        // Redirigir admin a panel de admin si está en index.html
-        if (currentUser && currentUser.role === 'Rol_Administradores') {
+        // Redirigir admin y editor a panel de admin si está en index.html
+        if (currentUser && (currentUser.role === 'Rol_Administradores' || currentUser.role === 'Rol_Editores')) {
             window.location.href = '/admin';
         }
         // Cargar actividades para la vista pública y el Hero
