@@ -70,8 +70,8 @@ function checkAuth() {
     if (storedUser) {
         currentUser = JSON.parse(storedUser);
         
-        // Si es admin y estamos en index.html, redirigir
-        if (currentUser.role === 'Rol_Administradores' && !window.location.pathname.includes('admin')) {
+        // Si es admin o editor y estamos en index.html, redirigir
+        if ((currentUser.role === 'Rol_Administradores' || currentUser.role === 'Rol_Editores') && !window.location.pathname.includes('admin')) {
             window.location.href = '/admin'; 
         }
     }
@@ -90,7 +90,7 @@ function updateNavbar() {
                 </div>
                 <div class="flex flex-col">
                     <span class="text-white text-sm font-medium leading-none">${currentUser.fullName}</span>
-                    <span class="text-white/40 text-[10px] uppercase font-bold mt-0.5">${currentUser.role === 'Rol_Administradores' ? 'Admin' : 'Estudiante'}</span>
+                    <span class="text-white/40 text-[10px] uppercase font-bold mt-0.5">${currentUser.role === 'Rol_Administradores' ? 'Admin' : (currentUser.role === 'Rol_Editores' ? 'Editor' : 'Estudiante')}</span>
                 </div>
             </div>
             <button onclick="logout()" class="px-4 py-2 rounded-lg text-sm font-medium text-white/80 hover:text-white hover:bg-white/8 transition-all duration-200 flex items-center gap-2">
@@ -683,8 +683,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (window.location.pathname.includes('admin')) {
         loadAdminData();
     } else {
-        // Redirigir admin a panel de admin si está en index.html
-        if (currentUser && currentUser.role === 'Rol_Administradores') {
+        // Redirigir admin/editor a panel de admin si está en index.html
+        if (currentUser && (currentUser.role === 'Rol_Administradores' || currentUser.role === 'Rol_Editores')) {
             window.location.href = '/admin';
         }
         // Cargar actividades para la vista pública y el Hero
