@@ -347,6 +347,20 @@ let adminInstitutions = [];
 function switchAdminTab(tab) {
     document.querySelectorAll('.admin-tab').forEach(el => el.classList.add('hidden'));
     document.getElementById(`content-${tab}`).classList.remove('hidden');
+
+    ['overview', 'activities', 'users'].forEach(t => {
+        const btn = document.getElementById(`tab-${t}`);
+        if (btn) {
+            btn.classList.remove('bg-emerald-500/10', 'text-emerald-400');
+            btn.classList.add('text-white/50', 'hover:bg-white/5', 'hover:text-white');
+        }
+    });
+
+    const activeBtn = document.getElementById(`tab-${tab}`);
+    if (activeBtn) {
+        activeBtn.classList.remove('text-white/50', 'hover:bg-white/5', 'hover:text-white');
+        activeBtn.classList.add('bg-emerald-500/10', 'text-emerald-400');
+    }
 }
 
 async function loadAdminData() {
@@ -357,10 +371,13 @@ async function loadAdminData() {
         return;
     }
 
-    // Hide users tab for editors
+    // Handle editor view specifics
     if (currentUser.role === 'Rol_Editores') {
         const tabUsersBtn = document.getElementById('tab-users');
         if (tabUsersBtn) tabUsersBtn.classList.add('hidden');
+        
+        const panelTitle = document.getElementById('panel-title');
+        if (panelTitle) panelTitle.innerText = 'Editor Panel';
     }
 
     document.getElementById('admin-avatar').innerText = currentUser.fullName ? currentUser.fullName[0].toUpperCase() : 'A';
@@ -544,11 +561,23 @@ async function deleteUser(id) {
 }
 
 // User Modal Logic
+function openUserModal() {
+    document.getElementById('user-form').reset();
+    document.getElementById('user-id').value = '';
+    document.getElementById('modal-user-title').innerText = 'Nuevo Usuario';
+    document.getElementById('user-password-container').classList.remove('hidden');
+    document.getElementById('user-password').required = true;
+    document.getElementById('user-modal').classList.remove('hidden');
+}
+
 function openEditUserModal(user) {
     document.getElementById('user-id').value = user.id;
     document.getElementById('user-fullname').value = user.full_name;
     document.getElementById('user-email').value = user.email;
     document.getElementById('user-role').value = user.role;
+    document.getElementById('modal-user-title').innerText = 'Editar Usuario';
+    document.getElementById('user-password-container').classList.add('hidden');
+    document.getElementById('user-password').required = false;
     document.getElementById('user-modal').classList.remove('hidden');
 }
 
@@ -561,15 +590,29 @@ if (userForm) {
     userForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const id = document.getElementById('user-id').value;
-        const body = {
-            FullName: document.getElementById('user-fullname').value,
-            Email: document.getElementById('user-email').value,
-            RolID: document.getElementById('user-role').value
-        };
+        let body = {};
+        
+        if (!id) {
+            body = {
+                fullName: document.getElementById('user-fullname').value,
+                email: document.getElementById('user-email').value,
+                role: document.getElementById('user-role').value,
+                password: document.getElementById('user-password').value
+            };
+        } else {
+            body = {
+                FullName: document.getElementById('user-fullname').value,
+                Email: document.getElementById('user-email').value,
+                RolID: document.getElementById('user-role').value
+            };
+        }
+
+        const method = id ? 'PUT' : 'POST';
+        const url = id ? `${API_URL}/users/${id}` : `${API_URL}/auth/register`;
 
         try {
-            await fetch(`${API_URL}/users/${id}`, {
-                method: 'PUT',
+            await fetch(url, {
+                method,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)
             });
