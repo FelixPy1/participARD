@@ -46,6 +46,16 @@ function navigate(page) {
     if (page === 'activities') {
         fetchActivities();
     }
+
+    // Mostrar el footer solo en la página de inicio
+    const footer = document.getElementById('main-footer');
+    if (footer) {
+        if (page === 'home') {
+            footer.classList.remove('hidden');
+        } else {
+            footer.classList.add('hidden');
+        }
+    }
 }
 
 // ==========================================
