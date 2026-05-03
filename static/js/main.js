@@ -197,6 +197,8 @@ if (authForm) {
 // ACTIVITIES (PUBLIC)
 // ==========================================
 
+let currentPublicActivities = [];
+
 async function fetchActivities(type = 'all') {
     try {
         let url = API_URL + '/activities';
@@ -204,6 +206,8 @@ async function fetchActivities(type = 'all') {
         
         const res = await fetch(url);
         const activities = await res.json();
+        
+        currentPublicActivities = activities;
         
         // Populate Hero Mockups dynamically
         if (activities.length > 0 && type === 'all') {
@@ -246,69 +250,89 @@ async function fetchActivities(type = 'all') {
             }
         }
 
-        const grid = document.getElementById('activities-grid');
-        if (!grid) return;
-        
-        grid.innerHTML = '';
-        
-        activities.forEach(act => {
-            const date = new Date(act.end_date).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
-            
-            let actionHtml = '';
-            if (!currentUser || currentUser.role === 'Rol_Estudiantes') {
-                actionHtml = `
-                <div class="mt-6 pt-4 border-t border-white/10">
-                    <button onclick="enrollActivity(${act.id})" class="w-full btn-premium py-2.5 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-white border border-emerald-500/30 rounded-xl font-bold transition-all flex justify-center items-center gap-2">
-                        <i data-lucide="check-circle" class="w-4 h-4"></i>
-                        Inscribirme ahora
-                    </button>
-                </div>`;
-            }
-
-            grid.innerHTML += `
-                <div class="glass-card flex flex-col h-full rounded-2xl overflow-hidden group">
-                    ${act.image_url ? `
-                    <div class="h-48 w-full relative overflow-hidden shrink-0">
-                        <img src="${act.image_url}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt="${act.title}">
-                        <div class="absolute inset-0 bg-gradient-to-t from-[#080d1a] via-transparent to-black/30"></div>
-                    </div>` : ''}
-                    <div class="p-6 flex-1 flex flex-col relative z-10 ${act.image_url ? '-mt-20' : ''}">
-                        <div class="flex justify-between items-start mb-4">
-                            <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full ${act.image_url ? 'bg-black/40 backdrop-blur-md border border-white/20 text-emerald-300' : 'bg-white/5 border border-white/10 text-emerald-400'} text-xs font-bold uppercase tracking-wider shadow-inner">
-                                <i data-lucide="tag" class="w-3 h-3"></i>
-                                ${act.type_id}
-                            </div>
-                            <div class="px-2 py-1 rounded ${act.image_url ? 'bg-black/40 backdrop-blur-md border border-white/20 text-white/90' : 'bg-white/5 text-white/50 border border-white/5'} text-xs font-medium flex items-center gap-1">
-                                <i data-lucide="map-pin" class="w-3 h-3"></i>
-                                ${act.province}
-                            </div>
-                        </div>
-                        <h3 class="text-xl font-extrabold text-white mb-3 group-hover:text-emerald-400 transition-colors line-clamp-2 leading-snug">${act.title}</h3>
-                        <p class="text-white/60 text-sm mb-6 flex-1 line-clamp-3 leading-relaxed">${act.description}</p>
-                        
-                        <div class="space-y-3 mt-auto bg-white/5 p-4 rounded-xl border border-white/5">
-                            <div class="flex items-center gap-3 text-white/70 text-sm">
-                                <div class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0">
-                                    <i data-lucide="building" class="w-4 h-4 text-emerald-400"></i>
-                                </div>
-                                <span class="truncate font-medium">${act.institution_name}</span>
-                            </div>
-                            <div class="flex items-center gap-3 text-white/70 text-sm">
-                                <div class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0">
-                                    <i data-lucide="calendar" class="w-4 h-4 text-emerald-400"></i>
-                                </div>
-                                <span class="font-medium">Cierre: ${date}</span>
-                            </div>
-                        </div>
-                        ${actionHtml}
-                    </div>
-                </div>
-            `;
-        });
-        if (window.lucide) window.lucide.createIcons();
+        renderActivitiesGrid();
     } catch (err) {
         console.error(err);
     }
+}
+
+function renderActivitiesGrid() {
+    const grid = document.getElementById('activities-grid');
+    if (!grid) return;
+    
+    const searchInput = document.getElementById('search-activities');
+    const searchQuery = searchInput ? searchInput.value.toLowerCase() : '';
+    
+    grid.innerHTML = '';
+    
+    const filteredActivities = currentPublicActivities.filter(act => {
+        if (!searchQuery) return true;
+        return act.title.toLowerCase().includes(searchQuery) || 
+               (act.institution_name && act.institution_name.toLowerCase().includes(searchQuery)) ||
+               (act.province && act.province.toLowerCase().includes(searchQuery)) ||
+               (act.type_id && act.type_id.toLowerCase().includes(searchQuery));
+    });
+    
+    if (filteredActivities.length === 0) {
+        grid.innerHTML = '<div class="col-span-full text-center text-white/50 py-12">No se encontraron actividades que coincidan con tu búsqueda.</div>';
+        return;
+    }
+    
+    filteredActivities.forEach(act => {
+        const date = new Date(act.end_date).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
+        
+        let actionHtml = '';
+        if (!currentUser || currentUser.role === 'Rol_Estudiantes') {
+            actionHtml = `
+            <div class="mt-6 pt-4 border-t border-white/10">
+                <button onclick="enrollActivity(${act.id})" class="w-full btn-premium py-2.5 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-white border border-emerald-500/30 rounded-xl font-bold transition-all flex justify-center items-center gap-2">
+                    <i data-lucide="check-circle" class="w-4 h-4"></i>
+                    Inscribirme ahora
+                </button>
+            </div>`;
+        }
+
+        grid.innerHTML += `
+            <div class="glass-card flex flex-col h-full rounded-2xl overflow-hidden group">
+                ${act.image_url ? `
+                <div class="h-48 w-full relative overflow-hidden shrink-0">
+                    <img src="${act.image_url}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt="${act.title}">
+                    <div class="absolute inset-0 bg-gradient-to-t from-[#080d1a] via-transparent to-black/30"></div>
+                </div>` : ''}
+                <div class="p-6 flex-1 flex flex-col relative z-10 ${act.image_url ? '-mt-20' : ''}">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full ${act.image_url ? 'bg-black/40 backdrop-blur-md border border-white/20 text-emerald-300' : 'bg-white/5 border border-white/10 text-emerald-400'} text-xs font-bold uppercase tracking-wider shadow-inner">
+                            <i data-lucide="tag" class="w-3 h-3"></i>
+                            ${act.type_id}
+                        </div>
+                        <div class="px-2 py-1 rounded ${act.image_url ? 'bg-black/40 backdrop-blur-md border border-white/20 text-white/90' : 'bg-white/5 text-white/50 border border-white/5'} text-xs font-medium flex items-center gap-1">
+                            <i data-lucide="map-pin" class="w-3 h-3"></i>
+                            ${act.province}
+                        </div>
+                    </div>
+                    <h3 class="text-xl font-extrabold text-white mb-3 group-hover:text-emerald-400 transition-colors line-clamp-2 leading-snug">${act.title}</h3>
+                    <p class="text-white/60 text-sm mb-6 flex-1 line-clamp-3 leading-relaxed">${act.description}</p>
+                    
+                    <div class="space-y-3 mt-auto bg-white/5 p-4 rounded-xl border border-white/5">
+                        <div class="flex items-center gap-3 text-white/70 text-sm">
+                            <div class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0">
+                                <i data-lucide="building" class="w-4 h-4 text-emerald-400"></i>
+                            </div>
+                            <span class="truncate font-medium">${act.institution_name}</span>
+                        </div>
+                        <div class="flex items-center gap-3 text-white/70 text-sm">
+                            <div class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0">
+                                <i data-lucide="calendar" class="w-4 h-4 text-emerald-400"></i>
+                            </div>
+                            <span class="font-medium">Cierre: ${date}</span>
+                        </div>
+                    </div>
+                    ${actionHtml}
+                </div>
+            </div>
+        `;
+    });
+    if (window.lucide) window.lucide.createIcons();
 }
 
 function filterActivities(type) {
