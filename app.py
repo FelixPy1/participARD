@@ -271,6 +271,12 @@ def create_activity():
         """, (data.get('Titulo'), data.get('Descripcion'), data.get('Tipo'), data.get('FechaCierre'), inst_id, data.get('Localidad'), None, data.get('ImagenURL')))
         
         new_activity_id = cursor.fetchone()[0]
+        
+        cursor.execute("""
+            INSERT INTO tblAuditoria_Actividades (ActividadID, Accion, UsuarioModificador)
+            VALUES (?, 'CREADA', ?)
+        """, (new_activity_id, data.get('modifier', 'Sistema')))
+        
         conn.commit()
 
         # Obtener correos de estudiantes
@@ -325,6 +331,12 @@ def update_activity(id):
             WHERE ActividadID=?
         """, (data.get('Titulo'), data.get('Descripcion'), data.get('Tipo'), data.get('FechaCierre'), 
               data.get('Localidad'), None, inst_id, data.get('ImagenURL'), id))
+              
+        cursor.execute("""
+            INSERT INTO tblAuditoria_Actividades (ActividadID, Accion, UsuarioModificador)
+            VALUES (?, 'EDITADA', ?)
+        """, (id, data.get('modifier', 'Sistema')))
+        
         conn.commit()
         conn.close()
         return jsonify({"message": "Actividad actualizada"}), 200
@@ -373,7 +385,21 @@ def delete_user(id):
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
+        
+        # Get user's name before deleting
+        cursor.execute("SELECT FullName FROM tblUsuarios WHERE UsuarioID=?", (id,))
+        row = cursor.fetchone()
+        deleted_name = row[0] if row else 'Usuario Desconocido'
+        
         cursor.execute('DELETE FROM tblInscripciones WHERE UsuarioID=?; DELETE FROM tblUsuarios WHERE UsuarioID=?;', (id, id))
+        
+        # Log the deletion
+        modifier = request.args.get('modifier', 'Sistema')
+        cursor.execute("""
+            INSERT INTO tblAuditoria_Actividades (ActividadID, Accion, UsuarioModificador)
+            VALUES (NULL, 'USUARIO ELIMINADO', ?)
+        """, (f"{deleted_name} (por {modifier})",))
+        
         conn.commit()
         conn.close()
         return jsonify({"message": "Usuario eliminado"}), 200
@@ -395,6 +421,54 @@ def enroll():
     except Exception as e:
         print(f"[ERROR Enrollment]: {e}")
         return jsonify({"error": "Error al inscribirse."}), 500
+
+@app.route('/api/recent_activity', methods=['GET'])
+def get_recent_activity():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT TOP 10 u.FullName, r.NombreRol, u.FechaCreacion as Fecha
+            FROM tblUsuarios u
+            JOIN tblRoles r ON u.RolID = r.RolID
+            ORDER BY u.FechaCreacion DESC
+        """)
+        users = cursor.fetchall()
+        
+        cursor.execute("""
+            SELECT TOP 10 a.Accion, a.UsuarioModificador, a.FechaModificacion as Fecha, act.Titulo
+            FROM tblAuditoria_Actividades a
+            LEFT JOIN tblActividades act ON a.ActividadID = act.ActividadID
+            ORDER BY a.FechaModificacion DESC
+        """)
+        audits = cursor.fetchall()
+        
+        conn.close()
+        
+        feed = []
+        for row in users:
+            feed.append({
+                'type': 'user',
+                'name': row[0],
+                'role': row[1],
+                'date': row[2].isoformat() if row[2] else None
+            })
+            
+        for row in audits:
+            feed.append({
+                'type': 'activity',
+                'action': row[0], 
+                'user': row[1],
+                'date': row[2].isoformat() if row[2] else None,
+                'title': row[3] or 'Actividad Eliminada'
+            })
+            
+        feed.sort(key=lambda x: x['date'] if x['date'] else '', reverse=True)
+        return jsonify(feed[:5]), 200
+    except Exception as e:
+        print(f"[ERROR Recent Activity]: {e}")
+        return jsonify({"error": "Error obteniendo actividad reciente."}), 500
 
 if __name__ == '__main__':
     print("========================================")

@@ -422,20 +422,24 @@ async function loadAdminData() {
     document.getElementById('admin-name').innerText = currentUser.fullName;
 
     try {
-        const [usersRes, actRes, instRes] = await Promise.all([
+        const [usersRes, actRes, instRes, recentRes] = await Promise.all([
             fetch(API_URL + '/users'),
             fetch(API_URL + '/activities'),
-            fetch(API_URL + '/institutions')
+            fetch(API_URL + '/institutions'),
+            fetch(API_URL + '/recent_activity')
         ]);
         
         const users = await usersRes.json();
         const activities = await actRes.json();
         adminInstitutions = await instRes.json();
+        const recentActivity = await recentRes.json();
         
         document.getElementById('stat-users').innerText = users.length;
         document.getElementById('stat-activities').innerText = activities.length;
         
         renderAdminChart(users);
+        renderRecentActivity(recentActivity);
+        renderRolesPermissions(users);
         
         // Fill Users Table
         const usersList = document.getElementById('admin-users-list');
@@ -565,7 +569,8 @@ if (actForm) {
             FechaCierre: document.getElementById('act-date').value,
             Localidad: document.getElementById('act-location').value,
             InstitucionNombre: document.getElementById('act-institution').value,
-            ImagenURL: document.getElementById('act-image').value || null
+            ImagenURL: document.getElementById('act-image').value || null,
+            modifier: currentUser.fullName || 'Sistema'
         };
 
         const method = id ? 'PUT' : 'POST';
@@ -594,7 +599,8 @@ async function deleteActivity(id) {
 
 async function deleteUser(id) {
     if(confirm('¿Seguro que deseas eliminar este usuario?')) {
-        await fetch(`${API_URL}/users/${id}`, { method: 'DELETE' });
+        const modifier = currentUser ? currentUser.fullName : 'Sistema';
+        await fetch(`${API_URL}/users/${id}?modifier=${encodeURIComponent(modifier)}`, { method: 'DELETE' });
         loadAdminData();
     }
 }
@@ -708,12 +714,133 @@ function renderAdminChart(users) {
             maintainAspectRatio: false,
             plugins: {
                 legend: {
-                    position: 'bottom',
-                    labels: { color: 'rgba(255, 255, 255, 0.7)' }
+                    position: 'right',
+                    labels: { color: 'rgba(255, 255, 255, 0.7)', padding: 20 }
                 }
             }
         }
     });
+}
+
+function renderRecentActivity(recentActivity) {
+    const listEl = document.getElementById('recent-activity-list');
+    if (!listEl) return;
+    
+    if (!recentActivity || recentActivity.length === 0) {
+        listEl.innerHTML = '<p class="text-white/50 text-sm">No hay actividad reciente.</p>';
+        return;
+    }
+    
+    let html = '';
+    
+    recentActivity.forEach(act => {
+        let color = 'emerald';
+        let initials = 'U';
+        let title = '';
+        let desc = '';
+        
+        if (act.type === 'user') {
+            color = 'blue';
+            initials = 'US';
+            title = 'Nuevo usuario creado';
+            desc = `${act.name} (${act.role})`;
+        } else if (act.type === 'activity') {
+            if (act.action === 'USUARIO ELIMINADO') {
+                color = 'red';
+                initials = 'UE';
+                title = 'Usuario eliminado';
+                desc = act.user; // We stored the 'Name (por Modifier)' in the user field
+            } else {
+                color = act.action === 'CREADA' ? 'emerald' : (act.action === 'EDITADA' ? 'amber' : 'red');
+                initials = act.action === 'CREADA' ? 'CR' : (act.action === 'EDITADA' ? 'ED' : 'EL');
+                title = `Actividad ${act.action.toLowerCase()}`;
+                desc = `${act.title} (por ${act.user})`;
+            }
+        }
+        
+        // Formatear la fecha
+        let timeLabel = '';
+        if (act.date) {
+            const dateObj = new Date(act.date);
+            const today = new Date();
+            const diffTime = Math.abs(today - dateObj);
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            
+            if (diffDays === 0) timeLabel = 'Hoy';
+            else if (diffDays === 1) timeLabel = 'Ayer';
+            else timeLabel = `Hace ${diffDays} días`;
+        }
+        
+        html += `
+            <div class="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-${color}-500/20 text-${color}-400 flex items-center justify-center font-bold text-sm border border-${color}-500/30">
+                        ${initials}
+                    </div>
+                    <div>
+                        <p class="text-white text-sm font-medium">${title}</p>
+                        <p class="text-white/50 text-xs">${desc}</p>
+                    </div>
+                </div>
+                <span class="text-white/30 text-xs">${timeLabel}</span>
+            </div>
+        `;
+    });
+    
+    listEl.innerHTML = html;
+}
+
+
+
+function renderRolesPermissions(users) {
+    const listEl = document.getElementById('roles-permissions-list');
+    if (!listEl) return;
+    
+    let admins = 0, editores = 0, estudiantes = 0;
+    users.forEach(u => {
+        if (u.role === 'Rol_Administradores') admins++;
+        else if (u.role === 'Rol_Editores') editores++;
+        else estudiantes++;
+    });
+    
+    const roles = [
+        { name: 'Administrador', count: admins, access: 'Acceso total', color: 'purple', bg: 'purple-500/20', border: 'purple-500/30', text: 'purple-400' },
+        { name: 'Editor', count: editores, access: 'Lectura + edición', color: 'blue', bg: 'blue-500/20', border: 'blue-500/30', text: 'blue-400' },
+        { name: 'Estudiante', count: estudiantes, access: 'Solo lectura', color: 'emerald', bg: 'emerald-500/20', border: 'emerald-500/30', text: 'emerald-400' }
+    ];
+    
+    let html = '';
+    roles.forEach(r => {
+        html += `
+            <div class="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
+                <div class="flex items-center gap-3">
+                    <span class="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider bg-${r.color}-500/20 text-${r.color}-400 border border-${r.color}-500/30">
+                        ${r.name}
+                    </span>
+                    <span class="text-white/60 text-xs">${r.count} usuario${r.count !== 1 ? 's' : ''}</span>
+                </div>
+                <span class="text-white/40 text-xs">${r.access}</span>
+            </div>
+        `;
+    });
+    
+    listEl.innerHTML = html;
+    
+    const lastChangeEl = document.getElementById('last-role-change');
+    if (lastChangeEl && users.length > 0) {
+        const sortedUsers = [...users].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        const latestDate = new Date(sortedUsers[0].created_at);
+        const today = new Date();
+        const diffTime = Math.abs(today - latestDate);
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        
+        let timeLabel = '';
+        if (diffDays === 0) timeLabel = 'hoy';
+        else if (diffDays === 1) timeLabel = 'hace 1 día';
+        else timeLabel = `hace ${diffDays} días`;
+        
+        lastChangeEl.innerText = `Último cambio de rol: ${timeLabel} - por el sistema`;
+    }
 }
 
 // ==========================================
