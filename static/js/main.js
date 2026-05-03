@@ -424,7 +424,7 @@ async function loadAdminData() {
     try {
         const [usersRes, actRes, instRes, recentRes] = await Promise.all([
             fetch(API_URL + '/users'),
-            fetch(API_URL + '/activities'),
+            fetch(API_URL + '/activities?all=true'),
             fetch(API_URL + '/institutions'),
             fetch(API_URL + '/recent_activity')
         ]);
@@ -455,19 +455,11 @@ async function loadAdminData() {
             </tr>
         `).join('');
 
-        // Fill Activities Table
-        const actList = document.getElementById('admin-activities-list');
-        actList.innerHTML = activities.map(a => `
-            <tr>
-                <td class="px-6 py-4 text-sm text-white font-medium max-w-[200px] truncate">${a.title}</td>
-                <td class="px-6 py-4 text-sm"><span class="px-2 py-1 bg-white/10 rounded text-white/70">${a.type_id}</span></td>
-                <td class="px-6 py-4 text-sm text-white/70">${a.end_date.split('T')[0]}</td>
-                <td class="px-6 py-4 text-right flex justify-end gap-2">
-                    <button onclick='editActivity(${JSON.stringify(a).replace(/'/g, "&#39;")})' class="p-2 text-blue-400 hover:bg-blue-500/10 rounded-lg transition-all"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
-                    <button onclick="deleteActivity(${a.id})" class="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-all"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
-                </td>
-            </tr>
-        `).join('');
+        // Initialize Admin Activities Table and Stats
+        window.allAdminActivities = activities;
+        renderAdminActivitiesStats(activities);
+        renderAdminActivitiesTable(activities);
+        setupActivityFilters();
         
         // Fill Activity Types Datalist dynamically
         const uniqueTypes = [...new Set(activities.map(a => a.type_id))];
@@ -879,6 +871,159 @@ function initParticles() {
         el.style.filter = 'blur(1.5px)';
         container.appendChild(el);
     }
+}
+
+// ==========================================
+// ADMIN ACTIVITIES TAB LOGIC
+// ==========================================
+
+function renderAdminActivitiesStats(activities) {
+    const totalEl = document.getElementById('act-stat-total');
+    const proxEl = document.getElementById('act-stat-prox');
+    const proxDaysEl = document.getElementById('act-stat-prox-days');
+
+    if (!totalEl || !proxEl) return;
+
+    totalEl.innerText = activities.length;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const upcoming = activities
+        .map(a => ({ ...a, dateObj: new Date(a.end_date) }))
+        .filter(a => a.dateObj >= today)
+        .sort((a, b) => a.dateObj - b.dateObj);
+
+    if (upcoming.length > 0) {
+        const next = upcoming[0];
+        const options = { day: '2-digit', month: 'short' };
+        proxEl.innerText = next.dateObj.toLocaleDateString('es-ES', options);
+        
+        const diffTime = Math.abs(next.dateObj - today);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        proxDaysEl.innerText = diffDays === 0 ? 'hoy' : `en ${diffDays} días`;
+    } else {
+        proxEl.innerText = '-';
+        proxDaysEl.innerText = 'sin actividades futuras';
+    }
+}
+
+function renderAdminActivitiesTable(activities) {
+    const actList = document.getElementById('admin-activities-list');
+    if (!actList) return;
+
+    if (activities.length === 0) {
+        actList.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-white/50 text-sm">No se encontraron actividades.</td></tr>';
+        lucide.createIcons();
+        return;
+    }
+
+    const today = new Date();
+
+    actList.innerHTML = activities.map(a => {
+        // Calculate creation time ago
+        let createdTimeLabel = 'N/A';
+        if (a.created_at) {
+            const dateObj = new Date(a.created_at);
+            const diffTime = Math.abs(today - dateObj);
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            if (diffDays === 0) createdTimeLabel = 'Hoy';
+            else if (diffDays === 1) createdTimeLabel = 'Ayer';
+            else createdTimeLabel = `Hace ${diffDays} días`;
+        }
+
+        const dateObj = new Date(a.end_date);
+        const isClosed = dateObj < today;
+        const typeNormalized = a.type_id.toLowerCase();
+        
+        let typeColor = 'blue';
+        if (typeNormalized.includes('beca')) typeColor = 'blue';
+        else if (typeNormalized.includes('olimp')) typeColor = 'purple';
+        else typeColor = 'emerald';
+
+        const creator = a.created_by || 'administrador';
+        const creatorInitials = creator.substring(0, 2).toUpperCase();
+
+        const rowHtml = `
+            <tr class="hover:bg-white/5 transition-colors border-b border-white/5 last:border-0">
+                <td class="px-6 py-4">
+                    <p class="text-sm font-semibold text-white truncate max-w-[200px]">${a.title}</p>
+                    <p class="text-[10px] text-white/40 mt-1">Creada ${createdTimeLabel.toLowerCase()}</p>
+                </td>
+                <td class="px-6 py-4">
+                    <span class="inline-flex px-3 py-1 bg-${typeColor}-500/20 text-${typeColor}-400 border border-${typeColor}-500/30 rounded-full text-[10px] uppercase font-bold tracking-wider">
+                        ${a.type_id}
+                    </span>
+                </td>
+                <td class="px-6 py-4 text-sm ${isClosed ? 'text-white/30' : 'text-white/80'}">
+                    ${dateObj.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}
+                </td>
+                <td class="px-6 py-4">
+                    <div class="flex items-center gap-2">
+                        <div class="w-6 h-6 rounded-full bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-[10px] font-bold text-purple-400">
+                            ${creatorInitials}
+                        </div>
+                        <span class="text-xs text-white/60 truncate max-w-[100px]">${creator}</span>
+                    </div>
+                </td>
+                <td class="px-6 py-4">
+                    <div class="flex justify-end items-center gap-1">
+                        <button onclick='editActivity(${JSON.stringify(a).replace(/'/g, "&#39;")})' class="p-2 text-amber-400 hover:bg-amber-500/10 rounded-lg transition-all" title="Editar">
+                            <i data-lucide="edit-2" class="w-4 h-4"></i>
+                        </button>
+                        <button onclick="deleteActivity(${a.id})" class="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-all" title="Eliminar">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+        return rowHtml;
+    }).join('');
+
+    lucide.createIcons();
+}
+
+function setupActivityFilters() {
+    const searchInput = document.getElementById('activity-search-input');
+    const filterSelect = document.getElementById('activity-filter-select');
+    
+    if (!searchInput || !filterSelect || !window.allAdminActivities) return;
+
+    // Populate the select dynamically
+    const uniqueTypes = [...new Set(window.allAdminActivities.map(a => a.type_id))];
+    let selectHtml = '<option class="bg-[#0a0f1e]" value="all">Todas las categorías</option>';
+    uniqueTypes.forEach(type => {
+        selectHtml += `<option class="bg-[#0a0f1e]" value="${type}">${type}</option>`;
+    });
+    filterSelect.innerHTML = selectHtml;
+
+    // Remove old listeners to prevent duplicates
+    const newSearchInput = searchInput.cloneNode(true);
+    searchInput.parentNode.replaceChild(newSearchInput, searchInput);
+    
+    const newFilterSelect = filterSelect.cloneNode(true);
+    filterSelect.parentNode.replaceChild(newFilterSelect, filterSelect);
+
+    const applyFilters = () => {
+        if (!window.allAdminActivities) return;
+        
+        const query = newSearchInput.value.toLowerCase();
+        const currentFilter = newFilterSelect.value.toLowerCase();
+        
+        let filtered = window.allAdminActivities.filter(a => {
+            const matchesSearch = a.title.toLowerCase().includes(query) || a.type_id.toLowerCase().includes(query);
+            if (!matchesSearch) return false;
+            
+            if (currentFilter === 'all') return true;
+            return a.type_id.toLowerCase() === currentFilter;
+        });
+
+        renderAdminActivitiesTable(filtered);
+    };
+    
+    newSearchInput.addEventListener('input', applyFilters);
+    newFilterSelect.addEventListener('change', applyFilters);
 }
 
 // ==========================================

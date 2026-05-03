@@ -173,6 +173,8 @@ def get_activities():
         province = request.args.get('province')
         type_id = request.args.get('type')
         
+        fetch_all = request.args.get('all')
+        
         query = """
             SELECT a.ActividadID as id, a.Titulo as title, a.Descripcion as description, 
                    a.Tipo as type_id, a.FechaCierre as end_date, 
@@ -180,12 +182,22 @@ def get_activities():
                    'Activa' as status,
                    ISNULL(a.Localidad, 'No especificada') as location,
                    ISNULL(a.Provincia, 'N/A') as province,
-                   a.ImagenURL as image_url
+                   a.ImagenURL as image_url,
+                   aud.UsuarioModificador as created_by,
+                   aud.FechaModificacion as created_at
             FROM tblActividades a
             JOIN tblInstituciones i ON a.InstitucionID = i.InstitucionID
-            WHERE a.FechaCierre >= GETDATE()
+            OUTER APPLY (
+                SELECT TOP 1 UsuarioModificador, FechaModificacion
+                FROM tblAuditoria_Actividades
+                WHERE ActividadID = a.ActividadID AND Accion = 'CREADA'
+                ORDER BY FechaModificacion ASC
+            ) aud
+            WHERE 1=1
         """
         params = []
+        if not fetch_all:
+            query += " AND a.FechaCierre >= GETDATE()"
         if province:
             query += " AND a.Provincia = ?"
             params.append(province)
