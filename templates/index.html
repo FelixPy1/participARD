@@ -290,7 +290,7 @@
     </main>
 
     <!-- ================= AUTH MODAL ================= -->
-    <div id="auth-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+    <div id="auth-modal" class="hidden fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
         <div class="glass-panel relative w-full max-w-md rounded-3xl p-8 shadow-[0_0_50px_rgba(16,185,129,0.15)]">
             <button onclick="toggleAuthModal()" class="absolute top-6 right-6 p-2 text-white/50 hover:text-white hover:bg-white/10 rounded-full transition-all">
                 <i data-lucide="x" class="w-5 h-5"></i>
@@ -349,8 +349,68 @@
         </div>
     </div>
 
+    <!-- ================= PUBLIC ACTIVITY MODAL ================= -->
+    <div id="public-activity-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+        <div class="glass-panel relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl shadow-[0_0_50px_rgba(16,185,129,0.15)] flex flex-col">
+            <!-- Header Image -->
+            <div id="public-activity-image-container" class="h-48 w-full relative overflow-hidden shrink-0 rounded-t-3xl hidden">
+                <img id="public-activity-image" src="" class="w-full h-full object-cover" alt="Actividad">
+                <div class="absolute inset-0 bg-gradient-to-t from-[#080d1a] to-transparent"></div>
+            </div>
+            
+            <button onclick="closePublicActivityModal()" class="absolute top-4 right-4 z-10 p-2 text-white/70 hover:text-white bg-black/20 hover:bg-black/40 rounded-full transition-all">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+
+            <div class="p-8 flex-1 flex flex-col">
+                <div class="flex flex-wrap gap-2 mb-4">
+                    <div id="public-activity-type" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold uppercase tracking-wider">
+                        <i data-lucide="tag" class="w-3 h-3"></i>
+                        Tipo
+                    </div>
+                    <div id="public-activity-province" class="px-2 py-1 rounded bg-white/5 text-white/70 border border-white/5 text-xs font-medium flex items-center gap-1">
+                        <i data-lucide="map-pin" class="w-3 h-3"></i>
+                        Provincia
+                    </div>
+                </div>
+
+                <h2 id="public-activity-title" class="text-3xl font-extrabold text-white mb-6 leading-tight">Título</h2>
+                
+                <p id="public-activity-desc" class="text-white/70 text-base leading-relaxed mb-8">Descripción</p>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8 bg-white/5 p-4 rounded-xl border border-white/5">
+                    <div class="flex items-center gap-3 text-white/80">
+                        <div class="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0">
+                            <i data-lucide="building" class="w-5 h-5 text-emerald-400"></i>
+                        </div>
+                        <div>
+                            <p class="text-[10px] text-white/40 uppercase tracking-wider font-semibold">Institución</p>
+                            <span id="public-activity-inst" class="font-medium text-sm">Nombre Institución</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3 text-white/80">
+                        <div class="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0">
+                            <i data-lucide="calendar" class="w-5 h-5 text-emerald-400"></i>
+                        </div>
+                        <div>
+                            <p class="text-[10px] text-white/40 uppercase tracking-wider font-semibold">Fecha de cierre</p>
+                            <span id="public-activity-date" class="font-medium text-sm">Fecha</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-auto pt-6 border-t border-white/10" id="public-activity-action-container">
+                    <button id="public-activity-enroll-btn" class="w-full btn-premium py-3 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl font-bold transition-all flex justify-center items-center gap-2 shadow-[0_0_20px_rgba(16,185,129,0.3)]">
+                        <i data-lucide="check-circle" class="w-5 h-5"></i>
+                        Inscribirme ahora
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts -->
-    <script src="/static/js/main.js"></script>
+    <script src="/static/js/main.js?v=9"></script>
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
     <script>
         lucide.createIcons();

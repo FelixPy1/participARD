@@ -249,7 +249,7 @@ def get_institutions():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute('SELECT InstitucionID as id, Nombre as name FROM tblInstituciones')
+        cursor.execute("SELECT InstitucionID as id, Nombre as name FROM tblInstituciones")
         columns = [column[0] for column in cursor.description]
         results = [dict(zip(columns, row)) for row in cursor.fetchall()]
         conn.close()
@@ -257,6 +257,38 @@ def get_institutions():
     except Exception as e:
         print(f"[ERROR Get Institutions]: {e}")
         return jsonify({"error": "Error obteniendo instituciones."}), 500
+
+@app.route('/api/enrollments', methods=['POST'])
+def enroll():
+    data = request.json
+    user_id = data.get('user_id')
+    activity_id = data.get('activity_id')
+    
+    if not user_id or not activity_id:
+        return jsonify({"error": "Faltan datos de inscripción."}), 400
+        
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Check if already enrolled
+        cursor.execute("SELECT 1 FROM tblInscripciones WHERE UsuarioID = ? AND ActividadID = ?", (user_id, activity_id))
+        if cursor.fetchone():
+            conn.close()
+            return jsonify({"error": "UNIQUE"}), 400
+            
+        cursor.execute(
+            "INSERT INTO tblInscripciones (UsuarioID, ActividadID, FechaInscripcion, EstadoInscripcion) VALUES (?, ?, GETDATE(), 'Activa')",
+            (user_id, activity_id)
+        )
+        conn.commit()
+        conn.close()
+        return jsonify({"message": "Inscripción exitosa"}), 201
+    except pyodbc.IntegrityError:
+        return jsonify({"error": "PRIMARY KEY"}), 400
+    except Exception as e:
+        print(f"[ERROR Enrollment]: {e}")
+        return jsonify({"error": "Error interno al procesar inscripción."}), 500
 
 @app.route('/api/activities', methods=['POST'])
 def create_activity():
@@ -419,20 +451,6 @@ def delete_user(id):
         print(e)
         return jsonify({"error": "Error eliminando usuario"}), 500
 
-@app.route('/api/enrollments', methods=['POST'])
-def enroll():
-    data = request.json
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute('INSERT INTO tblInscripciones (ActividadID, UsuarioID) VALUES (?, ?)', 
-                      (data.get('activity_id'), data.get('user_id')))
-        conn.commit()
-        conn.close()
-        return jsonify({"message": "Inscripción exitosa"}), 201
-    except Exception as e:
-        print(f"[ERROR Enrollment]: {e}")
-        return jsonify({"error": "Error al inscribirse."}), 500
 
 @app.route('/api/recent_activity', methods=['GET'])
 def get_recent_activity():
