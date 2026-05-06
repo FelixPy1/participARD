@@ -441,19 +441,45 @@ async function loadAdminData() {
         renderRecentActivity(recentActivity);
         renderRolesPermissions(users);
         
-        // Fill Users Table
-        const usersList = document.getElementById('admin-users-list');
-        usersList.innerHTML = users.map(u => `
-            <tr>
-                <td class="px-6 py-4 text-sm text-white">${u.full_name}</td>
-                <td class="px-6 py-4 text-sm text-white/70">${u.email}</td>
-                <td class="px-6 py-4 text-sm text-emerald-400">${u.role}</td>
-                <td class="px-6 py-4 text-right flex justify-end gap-2">
-                    <button onclick='openEditUserModal(${JSON.stringify(u).replace(/'/g, "&#39;")})' class="p-2 text-blue-400 hover:bg-blue-500/10 rounded-lg transition-all"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
-                    <button onclick="deleteUser('${u.id}')" class="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-all"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
-                </td>
-            </tr>
-        `).join('');
+        // Update User Stats
+        const totalUsers = users.length;
+        const activeUsers = users.length; // Assuming all users are active for now
+        
+        let userAdmins = 0, userEditors = 0, userStudents = 0;
+        let newUsersThisMonth = 0;
+        const currentMonth = new Date().getMonth();
+        const currentYear = new Date().getFullYear();
+
+        users.forEach(u => {
+            if (u.role === 'Rol_Administradores') userAdmins++;
+            else if (u.role === 'Rol_Editores') userEditors++;
+            else userStudents++;
+
+            if (u.created_at) {
+                const dateObj = new Date(u.created_at);
+                if (dateObj.getMonth() === currentMonth && dateObj.getFullYear() === currentYear) {
+                    newUsersThisMonth++;
+                }
+            }
+        });
+
+        const statTotal = document.getElementById('user-stat-total');
+        if (statTotal) statTotal.innerText = totalUsers;
+        const statNew = document.getElementById('user-stat-new');
+        if (statNew) statNew.innerText = newUsersThisMonth > 0 ? `↑ ${newUsersThisMonth} este mes` : 'Sin nuevos este mes';
+        
+        const statActive = document.getElementById('user-stat-active');
+        if (statActive) statActive.innerText = activeUsers;
+        const statActivePct = document.getElementById('user-stat-active-pct');
+        if (statActivePct) statActivePct.innerText = totalUsers > 0 ? `${Math.round((activeUsers/totalUsers)*100)}% del total` : '0% del total';
+
+        const statRoles = document.getElementById('user-stat-roles');
+        if (statRoles) statRoles.innerText = (userAdmins>0?1:0) + (userEditors>0?1:0) + (userStudents>0?1:0);
+
+        // Initialize Users Table and Search
+        window.allAdminUsers = users;
+        renderAdminUsersTable(users);
+        setupUserSearch();
 
         // Initialize Admin Activities Table and Stats
         window.allAdminActivities = activities;
@@ -476,6 +502,92 @@ async function loadAdminData() {
     } catch (err) {
         console.error(err);
     }
+}
+
+function renderAdminUsersTable(usersToRender) {
+    const usersList = document.getElementById('admin-users-list');
+    if (!usersList) return;
+    
+    if (usersToRender.length === 0) {
+        usersList.innerHTML = '<tr><td colspan="5" class="px-4 py-8 text-center text-white/50 text-sm">No se encontraron usuarios que coincidan con la búsqueda.</td></tr>';
+    } else {
+        usersList.innerHTML = usersToRender.map(u => {
+            let bgAvatar = '', textAvatar = '', bgBadge = '', textBadge = '', roleDisplay = '';
+            if (u.role === 'Rol_Estudiantes') {
+                bgAvatar = 'bg-[#0f3b30]'; textAvatar = 'text-[#34d399]';
+                bgBadge = 'bg-[#0f3b30] text-[#34d399]';
+                roleDisplay = 'Estudiante';
+            } else if (u.role === 'Rol_Editores') {
+                bgAvatar = 'bg-[#1a3048]'; textAvatar = 'text-[#60a5fa]';
+                bgBadge = 'bg-[#1a3048] text-[#60a5fa]';
+                roleDisplay = 'Editor';
+            } else {
+                bgAvatar = 'bg-[#2d1f4e]'; textAvatar = 'text-[#a78bfa]';
+                bgBadge = 'bg-[#2d1f4e] text-[#a78bfa]';
+                roleDisplay = 'Administrador';
+            }
+
+            const initials = u.full_name ? (u.full_name.substring(0, 2).toUpperCase()) : 'US';
+            const dateStr = u.created_at ? new Date(u.created_at).toLocaleDateString('es-ES', { month: 'short', year: 'numeric' }) : '';
+            
+            return `
+            <tr class="hover:bg-white/5 transition-colors group">
+                <td class="px-4 py-3">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full ${bgAvatar} ${textAvatar} flex items-center justify-center text-[11px] font-bold shrink-0 shadow-inner border border-white/5">${initials}</div>
+                        <div class="flex flex-col">
+                            <span class="text-[13px] text-white font-medium">${u.full_name}</span>
+                            <span class="text-[11px] text-white/40">Desde ${dateStr}</span>
+                        </div>
+                    </div>
+                </td>
+                <td class="px-4 py-3 text-[13px] text-white/70">${u.email}</td>
+                <td class="px-4 py-3">
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-medium ${bgBadge} border border-white/5">${roleDisplay}</span>
+                </td>
+                <td class="px-4 py-3 text-[12px] text-white/40">Reciente</td>
+                <td class="px-4 py-3 text-right">
+                    <div class="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onclick='openEditUserModal(${JSON.stringify(u).replace(/'/g, "&#39;")})' class="p-1.5 text-white/50 hover:text-white bg-[#111827] border border-white/10 rounded-md transition-all hover:bg-white/10" title="Editar">
+                            <i data-lucide="edit-2" class="w-3.5 h-3.5"></i>
+                        </button>
+                        <button onclick="deleteUser('${u.id}')" class="p-1.5 text-red-400 hover:text-red-300 bg-[#111827] border border-white/10 rounded-md transition-all hover:border-red-900/50 hover:bg-red-900/20" title="Eliminar">
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+            `;
+        }).join('');
+    }
+    
+    if (window.lucide) window.lucide.createIcons();
+    
+    const pagInfo = document.getElementById('user-pagination-info');
+    if (pagInfo) pagInfo.innerText = `Mostrando ${usersToRender.length} usuarios`;
+}
+
+function setupUserSearch() {
+    const searchInput = document.getElementById('user-search-input');
+    if (!searchInput) return;
+    
+    // Eliminar event listener anterior clonándolo
+    const newSearchInput = searchInput.cloneNode(true);
+    searchInput.parentNode.replaceChild(newSearchInput, searchInput);
+    
+    newSearchInput.addEventListener('input', (e) => {
+        const query = e.target.value.toLowerCase();
+        if (!window.allAdminUsers) return;
+        
+        const filtered = window.allAdminUsers.filter(u => {
+            const roleStr = u.role === 'Rol_Estudiantes' ? 'estudiante' : (u.role === 'Rol_Editores' ? 'editor' : 'administrador');
+            return (u.full_name && u.full_name.toLowerCase().includes(query)) ||
+                   (u.email && u.email.toLowerCase().includes(query)) ||
+                   roleStr.includes(query);
+        });
+        
+        renderAdminUsersTable(filtered);
+    });
 }
 
 // Cloudinary Integration
