@@ -15,7 +15,7 @@ app = Flask(__name__)
 CORS(app)
 
 
-DB_DRIVER = os.getenv('DB_DRIVER', '{ODBC Driver 17 for SQL Server}')
+DB_DRIVER = os.getenv('DB_DRIVER', '{ODBC Driver 18 for SQL Server}')
 DB_SERVER = os.getenv('DB_SERVER', '100.117.127.91,1433')
 DB_NAME = os.getenv('DB_NAME', 'ParticipARD_DB')
 DB_USER = os.getenv('DB_USER', 'amigo')
