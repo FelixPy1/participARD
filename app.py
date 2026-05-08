@@ -452,6 +452,148 @@ def delete_user(id):
         return jsonify({"error": "Error eliminando usuario"}), 500
 
 
+@app.route('/api/news', methods=['GET'])
+def get_news():
+    try:
+        search = request.args.get('search')
+        query = """
+            SELECT n.NoticiaID as id, n.Titulo as title, n.Resumen as summary, 
+                   n.Contenido as content, n.ImagenURL as image_url, 
+                   n.FechaPublicacion as date, n.Vistas as views,
+                   u.FullName as author_name, u.UsuarioID as author_id
+            FROM tblNoticias n
+            LEFT JOIN tblUsuarios u ON n.AutorID = u.UsuarioID
+            WHERE 1=1
+        """
+        params = []
+        if search:
+            query += " AND (n.Titulo LIKE ? OR n.Resumen LIKE ?)"
+            params.extend([f'%{search}%', f'%{search}%'])
+        
+        query += " ORDER BY n.FechaPublicacion DESC"
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(query, params)
+        
+        columns = [column[0] for column in cursor.description]
+        results = []
+        for row in cursor.fetchall():
+            row_dict = dict(zip(columns, row))
+            if row_dict['author_id']:
+                row_dict['author_id'] = str(row_dict['author_id'])
+            results.append(row_dict)
+            
+        conn.close()
+        return jsonify(results), 200
+    except Exception as e:
+        print(f"[ERROR Get News]: {e}")
+        return jsonify({"error": "Error obteniendo noticias."}), 500
+
+@app.route('/api/news/<int:news_id>', methods=['GET'])
+def get_news_detail(news_id):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT n.NoticiaID, n.Titulo, n.Contenido, n.Resumen, n.ImagenURL, 
+                   n.FechaPublicacion, n.Vistas, u.FullName as AutorNombre
+            FROM tblNoticias n
+            LEFT JOIN tblUsuarios u ON n.AutorID = u.UsuarioID
+            WHERE n.NoticiaID = ?
+        """, (news_id,))
+        
+        row = cursor.fetchone()
+        if not row:
+            conn.close()
+            return jsonify({'error': 'Noticia no encontrada'}), 404
+            
+        news = {
+            'id': row[0],
+            'title': row[1],
+            'content': row[2],
+            'summary': row[3],
+            'image_url': row[4],
+            'date': row[5].isoformat() if row[5] else None,
+            'views': row[6],
+            'author_name': row[7]
+        }
+        
+        conn.close()
+        return jsonify(news), 200
+    except Exception as e:
+        print(f"[ERROR Get News Detail]: {e}")
+        return jsonify({"error": "Error obteniendo detalle de noticia."}), 500
+
+@app.route('/api/news/<int:news_id>/view', methods=['POST'])
+def increment_news_view(news_id):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("UPDATE tblNoticias SET Vistas = Vistas + 1 WHERE NoticiaID = ?", (news_id,))
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/news', methods=['POST'])
+def create_news():
+    data = request.json
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            INSERT INTO tblNoticias (Titulo, Contenido, Resumen, ImagenURL, AutorID)
+            OUTPUT inserted.NoticiaID
+            VALUES (?, ?, ?, ?, ?)
+        """, (data.get('title'), data.get('content'), data.get('summary'), 
+              data.get('image_url'), data.get('author_id')))
+        
+        new_id = cursor.fetchone()[0]
+        conn.commit()
+        conn.close()
+        return jsonify({"message": "Noticia creada exitosamente", "id": new_id}), 201
+    except Exception as e:
+        print(f"[ERROR Create News]: {e}")
+        return jsonify({"error": "Error creando noticia"}), 500
+
+@app.route('/api/news/<int:id>', methods=['PUT'])
+def update_news(id):
+    data = request.json
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            UPDATE tblNoticias 
+            SET Titulo=?, Contenido=?, Resumen=?, ImagenURL=?
+            WHERE NoticiaID=?
+        """, (data.get('title'), data.get('content'), data.get('summary'), 
+              data.get('image_url'), id))
+        
+        conn.commit()
+        conn.close()
+        return jsonify({"message": "Noticia actualizada"}), 200
+    except Exception as e:
+        print(f"[ERROR Update News]: {e}")
+        return jsonify({"error": "Error actualizando noticia"}), 500
+
+@app.route('/api/news/<int:id>', methods=['DELETE'])
+def delete_news(id):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM tblNoticias WHERE NoticiaID = ?", (id,))
+        conn.commit()
+        conn.close()
+        return jsonify({"message": "Noticia eliminada"}), 200
+    except Exception as e:
+        print(f"[ERROR Delete News]: {e}")
+        return jsonify({"error": "Error eliminando noticia"}), 500
+
 @app.route('/api/recent_activity', methods=['GET'])
 def get_recent_activity():
     try:

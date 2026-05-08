@@ -35,6 +35,8 @@ function navigate(page) {
     if (target) {
         target.classList.remove('hidden');
         target.classList.add('block');
+    } else {
+        console.warn(`View section 'view-${page}' not found.`);
     }
 
     // Actualizar botones del navbar
@@ -44,13 +46,15 @@ function navigate(page) {
     });
 
     if (page === 'activities') {
-        fetchActivities();
+        if (typeof fetchActivities === 'function') fetchActivities();
+    } else if (page === 'news') {
+        if (typeof fetchNews === 'function') fetchNews();
     }
 
-    // Mostrar el footer solo en la página de inicio
+    // Mostrar el footer solo en la página de inicio o noticias
     const footer = document.getElementById('main-footer');
     if (footer) {
-        if (page === 'home') {
+        if (page === 'home' || page === 'news') {
             footer.classList.remove('hidden');
         } else {
             footer.classList.add('hidden');
@@ -66,14 +70,19 @@ let currentUser = null;
 let isLoginMode = true;
 
 function checkAuth() {
-    const storedUser = localStorage.getItem('participARD_user');
-    if (storedUser) {
-        currentUser = JSON.parse(storedUser);
-        
-        // Si es admin o editor y estamos en index.html, redirigir
-        if ((currentUser.role === 'Rol_Administradores' || currentUser.role === 'Rol_Editores') && !window.location.pathname.includes('admin')) {
-            window.location.href = '/admin'; 
+    try {
+        const storedUser = localStorage.getItem('participARD_user');
+        if (storedUser) {
+            currentUser = JSON.parse(storedUser);
+            
+            // Si es admin o editor y estamos en index.html, redirigir
+            if (currentUser && (currentUser.role === 'Rol_Administradores' || currentUser.role === 'Rol_Editores') && !window.location.pathname.includes('admin')) {
+                window.location.href = '/admin'; 
+            }
         }
+    } catch (err) {
+        console.error('Error in checkAuth:', err);
+        localStorage.removeItem('participARD_user'); // Limpiar datos corruptos
     }
     updateNavbar();
 }
@@ -442,10 +451,23 @@ function closePublicActivityModal() {
 let adminInstitutions = [];
 
 function switchAdminTab(tab) {
-    document.querySelectorAll('.admin-tab').forEach(el => el.classList.add('hidden'));
-    document.getElementById(`content-${tab}`).classList.remove('hidden');
+    console.log(`Switching to admin tab: ${tab}`);
+    const tabs = document.querySelectorAll('.admin-tab');
+    tabs.forEach(el => {
+        el.classList.add('hidden');
+        el.classList.remove('block');
+    });
+    
+    const target = document.getElementById(`content-${tab}`);
+    if (target) {
+        target.classList.remove('hidden');
+        target.classList.add('block');
+    } else {
+        console.error(`Admin content section 'content-${tab}' not found.`);
+        return;
+    }
 
-    ['overview', 'activities', 'users'].forEach(t => {
+    ['overview', 'activities', 'users', 'news'].forEach(t => {
         const btn = document.getElementById(`tab-${t}`);
         if (btn) {
             btn.classList.remove('bg-emerald-500/10', 'text-emerald-400');
@@ -481,17 +503,19 @@ async function loadAdminData() {
     document.getElementById('admin-name').innerText = currentUser.fullName;
 
     try {
-        const [usersRes, actRes, instRes, recentRes] = await Promise.all([
+        const [usersRes, actRes, instRes, recentRes, newsRes] = await Promise.all([
             fetch(API_URL + '/users'),
             fetch(API_URL + '/activities?all=true'),
             fetch(API_URL + '/institutions'),
-            fetch(API_URL + '/recent_activity')
+            fetch(API_URL + '/recent_activity'),
+            fetch(API_URL + '/news')
         ]);
         
         const users = await usersRes.json();
         const activities = await actRes.json();
         adminInstitutions = await instRes.json();
         const recentActivity = await recentRes.json();
+        const news = await newsRes.json();
         
         document.getElementById('stat-users').innerText = users.length;
         document.getElementById('stat-activities').innerText = activities.length;
@@ -555,8 +579,14 @@ async function loadAdminData() {
 
         // Fill Institution Select removed as it is now free-text
 
+        // Initialize Admin News Table and Stats
+        window.allAdminNews = news;
+        renderAdminNewsStats(news);
+        renderAdminNewsTable(news);
+
         if (window.lucide) window.lucide.createIcons();
         initCloudinary();
+        initNewsCloudinary();
 
     } catch (err) {
         console.error(err);
@@ -1085,7 +1115,7 @@ function renderAdminActivitiesTable(activities) {
 
     if (activities.length === 0) {
         actList.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-white/50 text-sm">No se encontraron actividades.</td></tr>';
-        lucide.createIcons();
+        if (window.lucide) window.lucide.createIcons();
         return;
     }
 
@@ -1152,7 +1182,7 @@ function renderAdminActivitiesTable(activities) {
         return rowHtml;
     }).join('');
 
-    lucide.createIcons();
+    if (window.lucide) window.lucide.createIcons();
 }
 
 function setupActivityFilters() {
@@ -1198,21 +1228,336 @@ function setupActivityFilters() {
 }
 
 // ==========================================
+// NEWS (PUBLIC)
+// ==========================================
+
+let currentPublicNews = [];
+
+async function fetchNews() {
+    try {
+        const res = await fetch(API_URL + '/news');
+        const news = await res.json();
+        currentPublicNews = news;
+        renderNewsGrid();
+    } catch (err) {
+        console.error('Error fetching news:', err);
+    }
+}
+
+function renderNewsGrid() {
+    const grid = document.getElementById('news-grid');
+    if (!grid) return;
+
+    const searchInput = document.getElementById('search-news');
+    const query = searchInput ? searchInput.value.toLowerCase() : '';
+
+    grid.innerHTML = '';
+
+    const filteredNews = currentPublicNews.filter(n => 
+        n.title.toLowerCase().includes(query) || (n.summary && n.summary.toLowerCase().includes(query))
+    );
+
+    if (filteredNews.length === 0) {
+        grid.innerHTML = '<div class="text-center text-white/50 py-12">No se encontraron noticias.</div>';
+        return;
+    }
+
+    filteredNews.forEach((n, index) => {
+        const dateStr = new Date(n.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+        const initials = n.author_name ? n.author_name.substring(0, 2).toUpperCase() : 'AD';
+        
+        const isFeatured = index === 0;
+
+        const card = document.createElement('div');
+        if (isFeatured) {
+            card.className = 'col-span-full glass-card group flex flex-col lg:flex-row h-auto lg:h-80 rounded-[2rem] overflow-hidden border border-white/5 hover:border-emerald-500/30 transition-all duration-500 cursor-pointer hover:shadow-[0_0_50px_rgba(16,185,129,0.15)] mb-8';
+        } else {
+            card.className = 'glass-card group flex flex-col h-full rounded-[2rem] overflow-hidden border border-white/5 hover:border-emerald-500/30 transition-all duration-500 cursor-pointer hover:shadow-[0_0_40px_rgba(16,185,129,0.1)]';
+        }
+        
+        card.onclick = () => openNewsDetail(n.id);
+        
+        const imgSize = isFeatured ? 'lg:w-1/2' : 'h-56';
+        
+        card.innerHTML = `
+            <div class="relative overflow-hidden shrink-0 ${imgSize} w-full h-56 lg:h-full">
+                <img src="${n.image_url || 'https://images.unsplash.com/photo-1585829365234-78d9b6924617?q=80&w=2070&auto=format&fit=crop'}" 
+                     class="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" 
+                     alt="${n.title}">
+                <div class="absolute inset-0 bg-gradient-to-t from-[#080d1a] via-transparent to-transparent opacity-60"></div>
+                ${isFeatured ? '<div class="absolute top-6 left-6 px-4 py-1.5 rounded-full bg-emerald-500 text-white text-[10px] font-bold uppercase tracking-wider shadow-lg">Destacado</div>' : ''}
+            </div>
+            <div class="flex-1 p-8 flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center gap-4 mb-4">
+                        <span class="text-emerald-400 text-[11px] font-bold uppercase tracking-widest">${dateStr}</span>
+                        <div class="w-1 h-1 rounded-full bg-white/20"></div>
+                        <span class="text-white/40 text-[11px] flex items-center gap-1">
+                            <i data-lucide="eye" class="w-3.5 h-3.5"></i> ${n.views} vistas
+                        </span>
+                    </div>
+                    <h3 class="${isFeatured ? 'text-3xl lg:text-4xl' : 'text-xl'} font-bold text-white mb-4 group-hover:text-emerald-400 transition-colors leading-tight line-clamp-3">
+                        ${n.title}
+                    </h3>
+                    <p class="text-white/50 text-sm leading-relaxed line-clamp-3 mb-6">
+                        ${n.summary || ''}
+                    </p>
+                </div>
+                
+                <div class="flex items-center justify-between pt-6 border-t border-white/10">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white text-xs font-bold shadow-lg shadow-emerald-500/20">
+                            ${initials}
+                        </div>
+                        <div class="flex flex-col">
+                            <span class="text-xs font-semibold text-white/90">${n.author_name || 'ParticipaRD'}</span>
+                            <span class="text-[10px] text-white/40">Redacción</span>
+                        </div>
+                    </div>
+                    <div class="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center group-hover:bg-emerald-500 group-hover:border-emerald-500 transition-all duration-300">
+                        <i data-lucide="arrow-right" class="w-5 h-5 text-emerald-400 group-hover:text-white transition-colors"></i>
+                    </div>
+                </div>
+            </div>
+        `;
+        grid.appendChild(card);
+    });
+
+    if (window.lucide) window.lucide.createIcons();
+}
+
+async function openNewsDetail(id) {
+    try {
+        const res = await fetch(API_URL + '/news/' + id);
+        if (!res.ok) throw new Error('Failed to fetch news details');
+        
+        const n = await res.json();
+        
+        // Handle Unique View
+        const viewedKey = `viewed_news_${id}`;
+        if (!localStorage.getItem(viewedKey)) {
+            fetch(`${API_URL}/news/${id}/view`, { method: 'POST' }).catch(err => console.error(err));
+            localStorage.setItem(viewedKey, 'true');
+            n.views++; // Update local object for immediate UI feedback
+            
+            // Update grid views count if visible
+            const newsInArray = currentPublicNews.find(item => item.id === id);
+            if (newsInArray) newsInArray.views++;
+        }
+
+        document.getElementById('news-detail-title').innerText = n.title;
+        
+        // Format content: handle double line breaks as paragraphs
+        const formattedContent = n.content.split('\n\n').map(p => `<p class="mb-6">${p.replace(/\n/g, '<br>')}</p>`).join('');
+        document.getElementById('news-detail-content').innerHTML = formattedContent;
+        
+        document.getElementById('news-detail-date').innerText = new Date(n.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+        document.getElementById('news-detail-views-count').innerText = n.views;
+        document.getElementById('news-detail-author-name').innerText = n.author_name || 'ParticipaRD';
+        
+        const avatar = document.getElementById('news-detail-author-avatar');
+        avatar.innerText = n.author_name ? n.author_name.substring(0, 2).toUpperCase() : 'AD';
+        
+        const img = document.getElementById('news-detail-image');
+        if (n.image_url) {
+            img.src = n.image_url;
+            document.getElementById('news-detail-hero').classList.remove('hidden');
+        } else {
+            document.getElementById('news-detail-hero').classList.add('hidden');
+        }
+
+        document.getElementById('news-detail-modal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        
+        if (window.lucide) window.lucide.createIcons();
+        
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+function closeNewsDetail() {
+    document.getElementById('news-detail-modal').classList.add('hidden');
+    document.body.style.overflow = '';
+}
+
+// ==========================================
+// ADMIN NEWS TAB LOGIC
+// ==========================================
+
+let newsCloudinaryWidget = null;
+
+function initNewsCloudinary() {
+    if (window.cloudinary && !newsCloudinaryWidget) {
+        newsCloudinaryWidget = cloudinary.createUploadWidget({
+            cloudName: 'duvsilg9e', 
+            uploadPreset: 'participard_preset',
+            sources: ['local', 'url', 'camera'],
+            multiple: false,
+            language: 'es'
+        }, (error, result) => { 
+            if (!error && result && result.event === "success") { 
+                const imgUrl = result.info.secure_url;
+                document.getElementById('news-image-url').value = imgUrl;
+                document.getElementById('news-image-preview').src = imgUrl;
+                document.getElementById('news-image-preview-container').classList.remove('hidden');
+            }
+        });
+
+        const uploadBtn = document.getElementById('news_upload_widget');
+        if (uploadBtn) {
+            uploadBtn.addEventListener('click', () => newsCloudinaryWidget.open(), false);
+        }
+    }
+}
+
+function removeNewsImage() {
+    document.getElementById('news-image-url').value = '';
+    document.getElementById('news-image-preview').src = '';
+    document.getElementById('news-image-preview-container').classList.add('hidden');
+}
+
+function renderAdminNewsStats(news) {
+    const totalEl = document.getElementById('news-stat-total');
+    const viewsEl = document.getElementById('news-stat-views');
+    if (totalEl) totalEl.innerText = news.length;
+    if (viewsEl) {
+        const totalViews = news.reduce((acc, curr) => acc + (curr.views || 0), 0);
+        viewsEl.innerText = totalViews;
+    }
+}
+
+function renderAdminNewsTable(news) {
+    const list = document.getElementById('admin-news-list');
+    if (!list) return;
+
+    if (news.length === 0) {
+        list.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-white/50 text-sm">No hay noticias publicadas.</td></tr>';
+        return;
+    }
+
+    list.innerHTML = news.map(n => `
+        <tr class="hover:bg-white/5 transition-colors border-b border-white/5 last:border-0">
+            <td class="px-6 py-4">
+                <div class="flex items-center gap-4">
+                    <div class="w-16 h-10 rounded-lg overflow-hidden shrink-0 border border-white/10">
+                        <img src="${n.image_url || 'https://images.unsplash.com/photo-1585829365234-78d9b6924617?q=80&w=100&auto=format&fit=crop'}" class="w-full h-full object-cover">
+                    </div>
+                    <p class="text-sm font-semibold text-white truncate max-w-[250px]">${n.title}</p>
+                </div>
+            </td>
+            <td class="px-6 py-4 text-sm text-white/60">${n.author_name || 'Desconocido'}</td>
+            <td class="px-6 py-4 text-sm text-white/60">${new Date(n.date).toLocaleDateString()}</td>
+            <td class="px-6 py-4 text-sm text-emerald-400 font-medium">${n.views}</td>
+            <td class="px-6 py-4">
+                <div class="flex justify-end items-center gap-1">
+                    <button onclick='editNews(${JSON.stringify(n).replace(/'/g, "&#39;")})' class="p-2 text-amber-400 hover:bg-amber-500/10 rounded-lg transition-all" title="Editar">
+                        <i data-lucide="edit-2" class="w-4 h-4"></i>
+                    </button>
+                    <button onclick="deleteNews(${n.id})" class="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-all" title="Eliminar">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+    
+    if (window.lucide) window.lucide.createIcons();
+}
+
+function openNewsModal() {
+    document.getElementById('news-form').reset();
+    document.getElementById('news-id').value = '';
+    removeNewsImage();
+    document.getElementById('modal-news-title').innerText = 'Nueva Noticia';
+    document.getElementById('news-modal').classList.remove('hidden');
+}
+
+function closeNewsModal() {
+    document.getElementById('news-modal').classList.add('hidden');
+}
+
+function editNews(n) {
+    document.getElementById('news-id').value = n.id;
+    document.getElementById('news-title-input').value = n.title;
+    document.getElementById('news-summary-input').value = n.summary || '';
+    document.getElementById('news-content-input').value = n.content || '';
+    
+    if (n.image_url) {
+        document.getElementById('news-image-url').value = n.image_url;
+        document.getElementById('news-image-preview').src = n.image_url;
+        document.getElementById('news-image-preview-container').classList.remove('hidden');
+    } else {
+        removeNewsImage();
+    }
+    
+    document.getElementById('modal-news-title').innerText = 'Editar Noticia';
+    document.getElementById('news-modal').classList.remove('hidden');
+}
+
+const newsForm = document.getElementById('news-form');
+if (newsForm) {
+    newsForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('news-id').value;
+        const body = {
+            title: document.getElementById('news-title-input').value,
+            summary: document.getElementById('news-summary-input').value,
+            content: document.getElementById('news-content-input').value,
+            image_url: document.getElementById('news-image-url').value || null,
+            author_id: currentUser ? currentUser.id : null
+        };
+
+        const method = id ? 'PUT' : 'POST';
+        const url = id ? `${API_URL}/news/${id}` : `${API_URL}/news`;
+
+        try {
+            const res = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            if (!res.ok) throw new Error('Error saving news');
+            closeNewsModal();
+            loadAdminData();
+        } catch (err) {
+            console.error(err);
+            alert('Error al guardar la noticia');
+        }
+    });
+}
+
+async function deleteNews(id) {
+    if (confirm('¿Seguro que deseas eliminar esta noticia?')) {
+        try {
+            await fetch(`${API_URL}/news/${id}`, { method: 'DELETE' });
+            loadAdminData();
+        } catch (err) {
+            console.error(err);
+        }
+    }
+}
+
+// ==========================================
 // INIT
 // ==========================================
 
 document.addEventListener('DOMContentLoaded', () => {
-    checkAuth();
-    initParticles();
-    
-    if (window.location.pathname.includes('admin')) {
-        loadAdminData();
-    } else {
-        // Redirigir admin/editor a panel de admin si está en index.html
-        if (currentUser && (currentUser.role === 'Rol_Administradores' || currentUser.role === 'Rol_Editores')) {
-            window.location.href = '/admin';
+    try {
+        checkAuth();
+        initParticles();
+        
+        if (window.location.pathname.includes('admin')) {
+            loadAdminData().catch(err => console.error('Failed to load admin data:', err));
+        } else {
+            // Redirigir admin/editor a panel de admin si está en index.html
+            if (currentUser && (currentUser.role === 'Rol_Administradores' || currentUser.role === 'Rol_Editores')) {
+                window.location.href = '/admin';
+            }
+            // Cargar actividades para la vista pública y el Hero
+            if (typeof fetchActivities === 'function') fetchActivities();
         }
-        // Cargar actividades para la vista pública y el Hero
-        fetchActivities();
+    } catch (err) {
+        console.error('Critical initialization error:', err);
     }
 });
