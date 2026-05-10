@@ -183,6 +183,7 @@ def get_activities():
                    ISNULL(a.Localidad, 'No especificada') as location,
                    ISNULL(a.Provincia, 'N/A') as province,
                    a.ImagenURL as image_url,
+                   a.SitioOficialURL as official_url,
                    aud.UsuarioModificador as created_by,
                    aud.FechaModificacion as created_at
             FROM tblActividades a
@@ -309,10 +310,10 @@ def create_activity():
             inst_id = 1
             
         cursor.execute("""
-            INSERT INTO tblActividades (Titulo, Descripcion, Tipo, FechaCierre, InstitucionID, Localidad, Provincia, ImagenURL)
+            INSERT INTO tblActividades (Titulo, Descripcion, Tipo, FechaCierre, InstitucionID, Localidad, Provincia, ImagenURL, SitioOficialURL)
             OUTPUT inserted.ActividadID
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (data.get('Titulo'), data.get('Descripcion'), data.get('Tipo'), data.get('FechaCierre'), inst_id, data.get('Localidad'), None, data.get('ImagenURL')))
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (data.get('Titulo'), data.get('Descripcion'), data.get('Tipo'), data.get('FechaCierre'), inst_id, data.get('Localidad'), None, data.get('ImagenURL'), data.get('SitioOficialURL')))
         
         new_activity_id = cursor.fetchone()[0]
         
@@ -371,10 +372,10 @@ def update_activity(id):
 
         cursor.execute("""
             UPDATE tblActividades 
-            SET Titulo=?, Descripcion=?, Tipo=?, FechaCierre=?, Localidad=?, Provincia=?, InstitucionID=?, ImagenURL=?
+            SET Titulo=?, Descripcion=?, Tipo=?, FechaCierre=?, Localidad=?, Provincia=?, InstitucionID=?, ImagenURL=?, SitioOficialURL=?
             WHERE ActividadID=?
         """, (data.get('Titulo'), data.get('Descripcion'), data.get('Tipo'), data.get('FechaCierre'), 
-              data.get('Localidad'), None, inst_id, data.get('ImagenURL'), id))
+              data.get('Localidad'), None, inst_id, data.get('ImagenURL'), data.get('SitioOficialURL'), id))
               
         cursor.execute("""
             INSERT INTO tblAuditoria_Actividades (ActividadID, Accion, UsuarioModificador)

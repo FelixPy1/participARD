@@ -433,7 +433,13 @@ function openPublicActivityModal(activityId) {
         const newBtn = enrollBtn.cloneNode(true);
         newBtn.removeAttribute('onclick'); // prevent any stale onclick firing
         enrollBtn.parentNode.replaceChild(newBtn, enrollBtn);
-        newBtn.addEventListener('click', () => enrollActivity(act.id));
+        newBtn.addEventListener('click', () => {
+            if (act.official_url) {
+                window.open(act.official_url, '_blank');
+            } else {
+                enrollActivity(act.id);
+            }
+        });
     }
 
     document.getElementById('public-activity-modal').classList.remove('hidden');
@@ -737,6 +743,9 @@ function editActivity(act) {
     document.getElementById('act-date').value = act.end_date.split('T')[0];
     document.getElementById('act-location').value = act.location;
     document.getElementById('act-institution').value = act.institution_name || '';
+    if(document.getElementById('act-official-url')) {
+        document.getElementById('act-official-url').value = act.official_url || '';
+    }
     
     if (act.image_url) {
         document.getElementById('act-image').value = act.image_url;
@@ -763,6 +772,7 @@ if (actForm) {
             Localidad: document.getElementById('act-location').value,
             InstitucionNombre: document.getElementById('act-institution').value,
             ImagenURL: document.getElementById('act-image').value || null,
+            SitioOficialURL: document.getElementById('act-official-url') ? (document.getElementById('act-official-url').value || null) : null,
             modifier: currentUser.fullName || 'Sistema'
         };
 
