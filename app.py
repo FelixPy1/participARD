@@ -8,6 +8,8 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import threading
+import re
+from datetime import datetime, timedelta
 
 load_dotenv()
 
@@ -104,6 +106,19 @@ def send_activity_notification_email(activity_data, recipient_emails):
 def get_db_connection():
     return pyodbc.connect(conn_str)
 
+def is_password_secure(password):
+    if len(password) < 12:
+        return False, "La contraseña debe tener al menos 12 caracteres."
+    if not re.search(r"[A-Z]", password):
+        return False, "La contraseña debe incluir al menos una mayúscula."
+    if not re.search(r"[a-z]", password):
+        return False, "La contraseña debe incluir al menos una minúscula."
+    if not re.search(r"\d", password):
+        return False, "La contraseña debe incluir al menos un número."
+    if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", password):
+        return False, "La contraseña debe incluir al menos un carácter especial."
+    return True, ""
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -130,6 +145,10 @@ def register():
     password = data.get('password')
     role = data.get('role', 'Rol_Estudiantes')
 
+    is_secure, message = is_password_secure(password)
+    if not is_secure:
+        return jsonify({"error": message}), 400
+
     try:
         salt = bcrypt.gensalt()
         password_hash = bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
@@ -138,6 +157,10 @@ def register():
         cursor = conn.cursor()
         
         cursor.execute("{CALL sp_RegistrarUsuario (?, ?, ?, ?)}", (email, full_name, password_hash, role))
+        # sp_RegistrarUsuario doesn't set FechaUltimoCambioPassword by default in old script, 
+        # but our migration added the default. Let's ensure it's set if we want to be explicit.
+        cursor.execute("UPDATE tblUsuarios SET FechaUltimoCambioPassword = GETDATE() WHERE Email = ?", (email,))
+        
         conn.commit()
         conn.close()
         return jsonify({"message": "Usuario registrado con éxito en SQL Server."}), 201
@@ -157,21 +180,62 @@ def login():
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        cursor.execute("SELECT UsuarioID, FullName, Email, PasswordHash, RolID FROM tblUsuarios WHERE Email = ?", (email,))
+        cursor.execute("""
+            SELECT UsuarioID, FullName, Email, PasswordHash, RolID, 
+                   IntentosFallidos, BloqueadoHasta, FechaUltimoCambioPassword 
+            FROM tblUsuarios WHERE Email = ?
+        """, (email,))
         row = cursor.fetchone()
         
         if not row:
             return jsonify({"error": "Credenciales inválidas (Usuario no encontrado)."}), 401
             
-        user_id, full_name, user_email, password_hash, rol_id = row
+        user_id, full_name, user_email, password_hash, rol_id, intentos, bloqueado_hasta, fecha_pass = row
         
+        # Check if blocked
+        if bloqueado_hasta and bloqueado_hasta > datetime.now():
+            segundos_restantes = int((bloqueado_hasta - datetime.now()).total_seconds())
+            return jsonify({
+                "error": "Cuenta bloqueada temporalmente.",
+                "lockout": True,
+                "seconds_remaining": segundos_restantes
+            }), 403
+
         if not bcrypt.checkpw(password.encode('utf-8'), password_hash.encode('utf-8')):
-            return jsonify({"error": "Credenciales inválidas (Contraseña incorrecta)."}), 401
+            # Increment failed attempts
+            intentos += 1
+            if intentos >= 3:
+                nuevo_bloqueo = datetime.now() + timedelta(minutes=3)
+                cursor.execute("UPDATE tblUsuarios SET IntentosFallidos = ?, BloqueadoHasta = ? WHERE UsuarioID = ?", 
+                             (intentos, nuevo_bloqueo, user_id))
+                conn.commit()
+                return jsonify({
+                    "error": "Cuenta bloqueada por 3 minutos tras 3 intentos fallidos.",
+                    "lockout": True,
+                    "seconds_remaining": 180
+                }), 403
+            else:
+                cursor.execute("UPDATE tblUsuarios SET IntentosFallidos = ? WHERE UsuarioID = ?", (intentos, user_id))
+                conn.commit()
+                return jsonify({"error": f"Contraseña incorrecta. Intento {intentos} de 3."}), 401
             
+        # Success - Reset lockout and attempts
+        cursor.execute("UPDATE tblUsuarios SET IntentosFallidos = 0, BloqueadoHasta = NULL WHERE UsuarioID = ?", (user_id,))
+        
+        # Check password expiration (90 days)
+        if fecha_pass and (datetime.now() - fecha_pass).days >= 90:
+            conn.commit()
+            return jsonify({
+                "error": "Tu contraseña ha expirado (más de 90 días). Por favor, cámbiala.",
+                "expired": True,
+                "user_id": str(user_id)
+            }), 403
+
         cursor.execute("SELECT NombreRol FROM tblRoles WHERE RolID = ?", (rol_id,))
         role_row = cursor.fetchone()
         role_name = role_row[0] if role_row else 'Rol_Estudiantes'
         
+        conn.commit()
         conn.close()
         return jsonify({
             "user": {

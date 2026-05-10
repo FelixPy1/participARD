@@ -137,6 +137,9 @@ function toggleAuthModal(forceLogin = true) {
         if (!modal.classList.contains('hidden')) {
             isLoginMode = forceLogin;
             updateAuthForm();
+            // Reset errors/success when opening
+            document.getElementById('auth-error').classList.add('hidden');
+            document.getElementById('auth-success').classList.add('hidden');
         }
     }
 }
@@ -165,6 +168,45 @@ function updateAuthForm() {
 }
 
 // Handle Form Submission
+let lockoutInterval = null;
+
+function startLockoutCountdown(seconds) {
+    const errorContainer = document.getElementById('auth-error');
+    const errorMsg = document.getElementById('auth-error-msg');
+    const submitBtn = document.getElementById('auth-submit-btn');
+    
+    if (!errorContainer || !errorMsg) return;
+    
+    errorContainer.classList.remove('hidden');
+    submitBtn.disabled = true;
+    submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+    
+    if (lockoutInterval) clearInterval(lockoutInterval);
+    
+    let remaining = seconds;
+    
+    const updateText = () => {
+        const minutes = Math.floor(remaining / 60);
+        const secs = remaining % 60;
+        const timeStr = `${minutes}:${secs < 10 ? '0' : ''}${secs}`;
+        errorMsg.innerHTML = `<strong>Cuenta bloqueada temporalmente.</strong><br>Por favor, espera <span class="text-white font-bold">${timeStr}</span> antes de intentar de nuevo.`;
+    };
+    
+    updateText();
+    
+    lockoutInterval = setInterval(() => {
+        remaining--;
+        if (remaining <= 0) {
+            clearInterval(lockoutInterval);
+            errorContainer.classList.add('hidden');
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        } else {
+            updateText();
+        }
+    }, 1000);
+}
+
 const authForm = document.getElementById('auth-form');
 if (authForm) {
     authForm.addEventListener('submit', async (e) => {
@@ -172,8 +214,22 @@ if (authForm) {
         
         const email = document.getElementById('auth-email').value;
         const password = document.getElementById('auth-password').value;
+        const confirmPassword = document.getElementById('auth-confirm-password').value;
         const fullName = document.getElementById('auth-name').value;
         const role = 'Rol_Estudiantes';
+        
+        const errorContainer = document.getElementById('auth-error');
+        const errorMsg = document.getElementById('auth-error-msg');
+        const successContainer = document.getElementById('auth-success');
+        
+        errorContainer.classList.add('hidden');
+        successContainer.classList.add('hidden');
+
+        if (password !== confirmPassword) {
+            errorContainer.classList.remove('hidden');
+            errorMsg.innerText = "Las contraseñas no coinciden.";
+            return;
+        }
         
         const endpoint = isLoginMode ? '/auth/login' : '/auth/register';
         const body = isLoginMode ? { email, password } : { email, password, fullName, role };
@@ -186,18 +242,29 @@ if (authForm) {
             });
             const data = await res.json();
             
-            if (!res.ok) throw new Error(data.error);
+            if (!res.ok) {
+                if (data.lockout) {
+                    startLockoutCountdown(data.seconds_remaining);
+                    return;
+                }
+                throw new Error(data.error);
+            }
             
             if (isLoginMode) {
                 localStorage.setItem('participARD_user', JSON.stringify(data.user));
                 checkAuth();
                 document.getElementById('auth-modal').classList.add('hidden');
             } else {
-                alert('Registro exitoso. Inicia sesión ahora.');
-                toggleAuthMode();
+                successContainer.classList.remove('hidden');
+                document.getElementById('auth-success-msg').innerText = 'Registro exitoso. Inicia sesión ahora.';
+                setTimeout(() => {
+                    toggleAuthMode();
+                    successContainer.classList.add('hidden');
+                }, 2000);
             }
         } catch (err) {
-            alert(err.message);
+            errorContainer.classList.remove('hidden');
+            errorMsg.innerText = err.message;
         }
     });
 }
@@ -831,7 +898,9 @@ function openUserModal() {
     document.getElementById('user-id').value = '';
     document.getElementById('modal-user-title').innerText = 'Nuevo Usuario';
     document.getElementById('user-password-container').classList.remove('hidden');
+    document.getElementById('user-confirm-password-container').classList.remove('hidden');
     document.getElementById('user-password').required = true;
+    document.getElementById('user-confirm-password').required = true;
     document.getElementById('user-modal').classList.remove('hidden');
 }
 
@@ -842,7 +911,9 @@ function openEditUserModal(user) {
     document.getElementById('user-role').value = user.role;
     document.getElementById('modal-user-title').innerText = 'Editar Usuario';
     document.getElementById('user-password-container').classList.add('hidden');
+    document.getElementById('user-confirm-password-container').classList.add('hidden');
     document.getElementById('user-password').required = false;
+    document.getElementById('user-confirm-password').required = false;
     document.getElementById('user-modal').classList.remove('hidden');
 }
 
@@ -858,11 +929,19 @@ if (userForm) {
         let body = {};
         
         if (!id) {
+            const password = document.getElementById('user-password').value;
+            const confirmPassword = document.getElementById('user-confirm-password').value;
+            
+            if (password !== confirmPassword) {
+                alert("Las contraseñas no coinciden.");
+                return;
+            }
+            
             body = {
                 fullName: document.getElementById('user-fullname').value,
                 email: document.getElementById('user-email').value,
                 role: document.getElementById('user-role').value,
-                password: document.getElementById('user-password').value
+                password: password
             };
         } else {
             body = {
