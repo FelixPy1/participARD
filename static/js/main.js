@@ -393,10 +393,11 @@ async function enrollActivity(activityId) {
         alert("¡Inscripción exitosa! Te hemos registrado en la actividad.");
         closePublicActivityModal();
     } catch (err) {
+        console.error('Enrollment error:', err);
         if(err.message.includes('PRIMARY KEY') || err.message.includes('UNIQUE')) {
              alert("Ya estás inscrito en esta actividad.");
         } else {
-             alert(err.message || "Ocurrió un error al inscribirte.");
+             alert("Error: " + err.message);
         }
     }
 }
@@ -434,13 +435,17 @@ function openPublicActivityModal(activityId) {
         newBtn.removeAttribute('onclick'); // prevent any stale onclick firing
         
         if (act.official_url) {
+            newBtn.innerHTML = `<i data-lucide="external-link" class="w-5 h-5"></i> Ir al sitio oficial`;
             newBtn.className = "w-full btn-premium py-3 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl font-bold transition-all flex justify-center items-center gap-2 shadow-[0_0_20px_rgba(16,185,129,0.3)]";
             newBtn.addEventListener('click', () => {
                 window.open(act.official_url, '_blank');
             });
         } else {
-            newBtn.className = "w-full py-3 bg-emerald-500/30 text-white/50 rounded-xl font-bold flex justify-center items-center gap-2 cursor-not-allowed";
-            // Do not add any click event so it does nothing
+            newBtn.innerHTML = `<i data-lucide="check-circle" class="w-5 h-5"></i> Inscribirme ahora`;
+            newBtn.className = "w-full btn-premium py-3 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl font-bold transition-all flex justify-center items-center gap-2 shadow-[0_0_20px_rgba(16,185,129,0.3)]";
+            newBtn.addEventListener('click', () => {
+                enrollActivity(act.id);
+            });
         }
         
         enrollBtn.parentNode.replaceChild(newBtn, enrollBtn);
@@ -1584,6 +1589,16 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             // Cargar actividades para la vista pública y el Hero
             if (typeof fetchActivities === 'function') fetchActivities();
+        }
+
+        // Forzar la eliminación de cualquier Service Worker previo (Limpiar "caché" de PWA)
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                for(let registration of registrations) {
+                    registration.unregister();
+                    console.log('Service Worker desinstalado para limpiar caché.');
+                }
+            });
         }
     } catch (err) {
         console.error('Critical initialization error:', err);

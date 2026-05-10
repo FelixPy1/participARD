@@ -14,6 +14,14 @@ load_dotenv()
 app = Flask(__name__)
 CORS(app)
 
+# Deshabilitar caché en desarrollo para evitar el problema de "cosas diferentes" entre laptops
+@app.after_request
+def add_header(response):
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '-1'
+    return response
+
 
 DB_DRIVER = os.getenv('DB_DRIVER', '{ODBC Driver 18 for SQL Server}')
 DB_SERVER = os.getenv('DB_SERVER', '100.117.127.91,1433')
@@ -103,6 +111,16 @@ def index():
 @app.route('/admin')
 def admin():
     return render_template('admin.html')
+
+@app.route('/sw.js')
+def serve_sw():
+    # Return empty JS to satisfy browser PWA checks without actual PWA
+    return app.response_class("self.addEventListener('fetch', function(event) { });", mimetype='application/javascript')
+
+@app.route('/favicon.ico')
+def favicon():
+    # Return 204 No Content for favicon to stop 404s
+    return '', 204
 
 @app.route('/api/auth/register', methods=['POST'])
 def register():
