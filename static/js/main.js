@@ -749,10 +749,19 @@ function editActivity(act) {
     document.getElementById('act-title').value = act.title;
     document.getElementById('act-desc').value = act.description;
     document.getElementById('act-type').value = act.type_id;
+    
+    // Helper para convertir la fecha del backend (ej. "Tue, 05 May 2026...") a formato YYYY-MM-DD
+    const formatDate = (dateStr) => {
+        if (!dateStr) return '';
+        const d = new Date(dateStr);
+        if (isNaN(d)) return '';
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    };
+
     if(document.getElementById('act-start-date') && act.start_date) {
-        document.getElementById('act-start-date').value = act.start_date.split('T')[0];
+        document.getElementById('act-start-date').value = formatDate(act.start_date);
     }
-    document.getElementById('act-date').value = act.end_date.split('T')[0];
+    document.getElementById('act-date').value = formatDate(act.end_date);
     if(document.getElementById('act-status')) {
         document.getElementById('act-status').value = act.status || 'Activa';
     }
