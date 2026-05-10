@@ -169,6 +169,24 @@ function updateAuthForm() {
 
 // Handle Form Submission
 let lockoutInterval = null;
+let isLockoutActive = false;
+let lockoutRemainingSeconds = 0;
+
+function showPremiumAlert(title, text, icon = 'error') {
+    Swal.fire({
+        title: title,
+        text: text,
+        icon: icon,
+        background: '#0a0f1e',
+        color: '#fff',
+        confirmButtonColor: '#10b981',
+        customClass: {
+            popup: 'glass-panel border border-white/10 rounded-3xl',
+            title: 'text-white font-bold',
+            htmlContainer: 'text-white/70'
+        }
+    });
+}
 
 function startLockoutCountdown(seconds) {
     const errorContainer = document.getElementById('auth-error');
@@ -178,16 +196,16 @@ function startLockoutCountdown(seconds) {
     if (!errorContainer || !errorMsg) return;
     
     errorContainer.classList.remove('hidden');
-    submitBtn.disabled = true;
     submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
     
     if (lockoutInterval) clearInterval(lockoutInterval);
     
-    let remaining = seconds;
+    isLockoutActive = true;
+    lockoutRemainingSeconds = seconds;
     
     const updateText = () => {
-        const minutes = Math.floor(remaining / 60);
-        const secs = remaining % 60;
+        const minutes = Math.floor(lockoutRemainingSeconds / 60);
+        const secs = lockoutRemainingSeconds % 60;
         const timeStr = `${minutes}:${secs < 10 ? '0' : ''}${secs}`;
         errorMsg.innerHTML = `<strong>Cuenta bloqueada temporalmente.</strong><br>Por favor, espera <span class="text-white font-bold">${timeStr}</span> antes de intentar de nuevo.`;
     };
@@ -195,11 +213,11 @@ function startLockoutCountdown(seconds) {
     updateText();
     
     lockoutInterval = setInterval(() => {
-        remaining--;
-        if (remaining <= 0) {
+        lockoutRemainingSeconds--;
+        if (lockoutRemainingSeconds <= 0) {
             clearInterval(lockoutInterval);
+            isLockoutActive = false;
             errorContainer.classList.add('hidden');
-            submitBtn.disabled = false;
             submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
         } else {
             updateText();
@@ -211,6 +229,14 @@ const authForm = document.getElementById('auth-form');
 if (authForm) {
     authForm.addEventListener('submit', async (e) => {
         e.preventDefault();
+
+        if (isLockoutActive) {
+            const minutes = Math.floor(lockoutRemainingSeconds / 60);
+            const secs = lockoutRemainingSeconds % 60;
+            const timeStr = `${minutes}:${secs < 10 ? '0' : ''}${secs}`;
+            showPremiumAlert('Cuenta Bloqueada', `Tu cuenta está bloqueada temporalmente por seguridad. Debes esperar ${timeStr} para intentar de nuevo.`, 'warning');
+            return;
+        }
         
         const email = document.getElementById('auth-email').value;
         const password = document.getElementById('auth-password').value;
@@ -226,8 +252,7 @@ if (authForm) {
         successContainer.classList.add('hidden');
 
         if (password !== confirmPassword) {
-            errorContainer.classList.remove('hidden');
-            errorMsg.innerText = "Las contraseñas no coinciden.";
+            showPremiumAlert('Error de Validación', 'Las contraseñas no coinciden. Por favor, verifícalas.', 'error');
             return;
         }
         
@@ -253,18 +278,26 @@ if (authForm) {
             if (isLoginMode) {
                 localStorage.setItem('participARD_user', JSON.stringify(data.user));
                 checkAuth();
-                document.getElementById('auth-modal').classList.add('hidden');
-            } else {
-                successContainer.classList.remove('hidden');
-                document.getElementById('auth-success-msg').innerText = 'Registro exitoso. Inicia sesión ahora.';
+                
+                Swal.fire({
+                    title: '¡Bienvenido!',
+                    text: `Hola ${data.user.fullName}, has iniciado sesión correctamente.`,
+                    icon: 'success',
+                    timer: 2000,
+                    showConfirmButton: false,
+                    background: '#0a0f1e',
+                    color: '#fff'
+                });
+                
                 setTimeout(() => {
-                    toggleAuthMode();
-                    successContainer.classList.add('hidden');
+                    document.getElementById('auth-modal').classList.add('hidden');
                 }, 2000);
+            } else {
+                showPremiumAlert('¡Registro Exitoso!', 'Tu cuenta ha sido creada. Ahora puedes iniciar sesión con tus credenciales.', 'success');
+                toggleAuthMode();
             }
         } catch (err) {
-            errorContainer.classList.remove('hidden');
-            errorMsg.innerText = err.message;
+            showPremiumAlert('Error de Acceso', err.message, 'error');
         }
     });
 }
@@ -942,7 +975,7 @@ if (userForm) {
             const confirmPassword = document.getElementById('user-confirm-password').value;
             
             if (password !== confirmPassword) {
-                alert("Las contraseñas no coinciden.");
+                showPremiumAlert('Error de Validación', 'Las contraseñas no coinciden.', 'error');
                 return;
             }
             
@@ -962,17 +995,32 @@ if (userForm) {
 
         const method = id ? 'PUT' : 'POST';
         const url = id ? `${API_URL}/users/${id}` : `${API_URL}/auth/register`;
-
         try {
-            await fetch(url, {
+            const res = await fetch(url, {
                 method,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)
             });
+            
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || 'Error al guardar el usuario');
+            }
+            
             closeUserModal();
             loadAdminData();
+            
+            Swal.fire({
+                title: '¡Éxito!',
+                text: id ? 'Usuario actualizado correctamente.' : 'Usuario creado correctamente.',
+                icon: 'success',
+                timer: 1500,
+                showConfirmButton: false,
+                background: '#0a0f1e',
+                color: '#fff'
+            });
         } catch (err) {
-            console.error(err);
+            showPremiumAlert('Error', err.message, 'error');
         }
     });
 }
