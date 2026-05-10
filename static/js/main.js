@@ -432,14 +432,18 @@ function openPublicActivityModal(activityId) {
     if (enrollBtn) {
         const newBtn = enrollBtn.cloneNode(true);
         newBtn.removeAttribute('onclick'); // prevent any stale onclick firing
-        enrollBtn.parentNode.replaceChild(newBtn, enrollBtn);
-        newBtn.addEventListener('click', () => {
-            if (act.official_url) {
+        
+        if (act.official_url) {
+            newBtn.className = "w-full btn-premium py-3 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl font-bold transition-all flex justify-center items-center gap-2 shadow-[0_0_20px_rgba(16,185,129,0.3)]";
+            newBtn.addEventListener('click', () => {
                 window.open(act.official_url, '_blank');
-            } else {
-                enrollActivity(act.id);
-            }
-        });
+            });
+        } else {
+            newBtn.className = "w-full py-3 bg-emerald-500/30 text-white/50 rounded-xl font-bold flex justify-center items-center gap-2 cursor-not-allowed";
+            // Do not add any click event so it does nothing
+        }
+        
+        enrollBtn.parentNode.replaceChild(newBtn, enrollBtn);
     }
 
     document.getElementById('public-activity-modal').classList.remove('hidden');
@@ -740,7 +744,13 @@ function editActivity(act) {
     document.getElementById('act-title').value = act.title;
     document.getElementById('act-desc').value = act.description;
     document.getElementById('act-type').value = act.type_id;
+    if(document.getElementById('act-start-date') && act.start_date) {
+        document.getElementById('act-start-date').value = act.start_date.split('T')[0];
+    }
     document.getElementById('act-date').value = act.end_date.split('T')[0];
+    if(document.getElementById('act-status')) {
+        document.getElementById('act-status').value = act.status || 'Activa';
+    }
     document.getElementById('act-location').value = act.location;
     document.getElementById('act-institution').value = act.institution_name || '';
     if(document.getElementById('act-official-url')) {
@@ -768,7 +778,9 @@ if (actForm) {
             Titulo: document.getElementById('act-title').value,
             Descripcion: document.getElementById('act-desc').value,
             Tipo: document.getElementById('act-type').value,
+            FechaInicio: document.getElementById('act-start-date') ? document.getElementById('act-start-date').value : document.getElementById('act-date').value,
             FechaCierre: document.getElementById('act-date').value,
+            Estado: document.getElementById('act-status') ? document.getElementById('act-status').value : 'Activa',
             Localidad: document.getElementById('act-location').value,
             InstitucionNombre: document.getElementById('act-institution').value,
             ImagenURL: document.getElementById('act-image').value || null,
@@ -1168,6 +1180,12 @@ function renderAdminActivitiesTable(activities) {
                 </td>
                 <td class="px-6 py-4 text-sm ${isClosed ? 'text-white/30' : 'text-white/80'}">
                     ${dateObj.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}
+                </td>
+                <td class="px-6 py-4">
+                    <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${a.status === 'Activa' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-white/5 text-white/40 border border-white/10'}">
+                        <span class="w-1.5 h-1.5 rounded-full ${a.status === 'Activa' ? 'bg-emerald-400' : 'bg-white/40'}"></span>
+                        ${a.status || 'Activa'}
+                    </span>
                 </td>
                 <td class="px-6 py-4">
                     <div class="flex items-center gap-2">

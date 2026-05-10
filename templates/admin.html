@@ -217,6 +217,7 @@
                             <th class="px-6 py-4 text-xs font-semibold text-white/50 uppercase tracking-wider">TIPO</th>
                             <th class="px-6 py-4 text-xs font-semibold text-white/50 uppercase tracking-wider">FECHA DE
                                 CIERRE</th>
+                            <th class="px-6 py-4 text-xs font-semibold text-white/50 uppercase tracking-wider">ESTADO</th>
                             <th class="px-6 py-4 text-xs font-semibold text-white/50 uppercase tracking-wider">CREADO
                                 POR</th>
                             <th
@@ -377,6 +378,22 @@
                         <datalist id="activity-types-list">
                             <!-- Opciones llenadas por JS -->
                         </datalist>
+                    </div>
+                    <div>
+                        <label class="text-xs text-white/70 mb-1 block">Estado</label>
+                        <select id="act-status" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white">
+                            <option class="bg-[#0a0f1e]" value="Activa">Activa</option>
+                            <option class="bg-[#0a0f1e]" value="Deshabilitada">Deshabilitada</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs text-white/70 mb-1 block">Fecha de Inicio</label>
+                        <input id="act-start-date" required type="date"
+                            class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white"
+                            style="color-scheme: dark;">
                     </div>
                     <div>
                         <label class="text-xs text-white/70 mb-1 block">Fecha de Cierre</label>
