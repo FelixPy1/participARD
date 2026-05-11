@@ -126,7 +126,7 @@ SELECT
     A.FechaCierre
 FROM tblActividades A
 INNER JOIN tblInstituciones I ON A.InstitucionID = I.InstitucionID
-WHERE A.FechaCierre >= GETDATE();
+WHERE A.FechaCierre >= GETDATE() OR A.FechaCierre IS NULL;
 GO
 
 CREATE VIEW vw_ParticipacionProvincial
