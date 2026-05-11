@@ -1504,8 +1504,11 @@ function renderNewsGrid() {
                     <p class="text-white/50 text-xs leading-relaxed line-clamp-3 mb-4">
                         ${n.summary || ''}
                     </p>
+                    <div class="flex items-center gap-2 text-emerald-400 text-xs font-bold group-hover:gap-3 transition-all duration-300">
+                        Leer noticia
+                        <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+                    </div>
                 </div>
-                
             </div>
         `;
         grid.appendChild(card);
