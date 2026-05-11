@@ -1499,17 +1499,6 @@ function renderNewsGrid() {
                     </p>
                 </div>
                 
-                <div class="flex items-center justify-between pt-4 border-t border-white/10">
-                    <div class="flex items-center gap-2">
-                        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white text-[10px] font-bold shadow-lg shadow-emerald-500/20">
-                            ${initials}
-                        </div>
-                        <span class="text-[10px] font-semibold text-white/90">${n.author_name || 'ParticipaRD'}</span>
-                    </div>
-                    <div class="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center group-hover:bg-emerald-500 group-hover:border-emerald-500 transition-all duration-300">
-                        <i data-lucide="arrow-right" class="w-4 h-4 text-emerald-400 group-hover:text-white transition-colors"></i>
-                    </div>
-                </div>
             </div>
         `;
         grid.appendChild(card);
