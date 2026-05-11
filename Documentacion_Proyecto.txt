@@ -1,0 +1,92 @@
+DOCUMENTACIÓN TÉCNICA DEL PROYECTO: ParticipARD
+
+=======================================================
+PARTE 1: REQUISITOS DE IMPLEMENTACIÓN
+=======================================================
+Herramientas necesarias para el desarrollo y despliegue del sistema:
+
+• Medios de almacenamiento recomendados:
+  - Tipo: SSD (Unidad de Estado Sólido) recomendado para el servidor de base de datos para asegurar respuestas rápidas en las consultas, especialmente al cargar la cuadrícula de actividades.
+  - Almacenamiento: Mínimo 50 GB disponibles (para el sistema operativo, el entorno de Python y la metadata en SQL Server).
+
+• Sistema Operativo:
+  - Arquitectura: 64-bits (x64).
+  - Desarrollo/Local: Windows 10 o Windows 11.
+  - Servidor recomendado: Windows Server 2022 o Ubuntu Server 22.04 LTS (Ejecutando la app de Python).
+
+• Gestor de Base de Datos:
+  - Motor: Microsoft SQL Server.
+  - Versión: 2019 o 2022.
+  - Edición: Express Edition (suficiente para entornos pequeños) o Standard Edition.
+
+• Conectividad:
+  - Tipo de Red: TCP/IP (Red local o VPN como Tailscale, dada la IP actual 100.117.127.91).
+  - Puertos: 
+      * 1433 (Puerto por defecto de conexión a SQL Server).
+      * 5000 (Puerto del servidor local de Flask).
+      * 80 / 443 (Para despliegue web público HTTP/HTTPS).
+
+
+=======================================================
+PARTE 2: CONECTIVIDAD DEL SISTEMA
+=======================================================
+• Mecanismo de conexión utilizado: ODBC (Open Database Connectivity).
+
+• Justificación: 
+La aplicación de servidor está construida utilizando el micro-framework Flask de Python. Para la conectividad con SQL Server, se emplea la librería nativa de Python llamada "pyodbc", la cual actúa como un puente sobre el driver oficial de Microsoft ("ODBC Driver 17/18 for SQL Server"). Este es el método oficial más eficiente, moderno y seguro recomendado por Microsoft y la comunidad de Python para integrar entornos backend de Python con bases de datos SQL Server, ofreciendo un excelente soporte para consultas parametrizadas (previniendo SQL Injection).
+
+
+=======================================================
+PARTE 3: ESTRUCTURA DE LA BASE DE DATOS
+=======================================================
+[NOTA PARA EL ALUMNO: Aquí debes insertar las capturas de pantalla desde tu SQL Server Management Studio (SSMS) de los diagramas, código de triggers y stored procedures]
+
+• Tablas y Relaciones (Modelo Lógico):
+  1. tblUsuarios: Almacena los credenciales y estado del usuario (UsuarioID, FullName, Email, PasswordHash, IntentosFallidos, BloqueadoHasta, FechaExpiracionPass). Relacionada con tblRoles.
+  2. tblRoles: Define la jerarquía (RolID, NombreRol).
+  3. tblActividades: Núcleo de la plataforma (ActividadID, Titulo, FechaInicio, FechaCierre, Estado, etc.). Relacionada con tblInstituciones.
+  4. tblInstituciones: Catálogo de instituciones asociadas a las actividades.
+  5. tblAuditoria_Actividades: Mantiene un historial de los cambios (quién creó/editó qué actividad y cuándo).
+
+• Vistas o consultas destacadas:
+  - Consulta unificada de "get_activities": Realiza un JOIN entre tblActividades y tblInstituciones, junto con un OUTER APPLY hacia tblAuditoria_Actividades para obtener dinámicamente quién fue el creador original de la actividad.
+
+• Procedimientos almacenados (Stored Procedures):
+  - "sp_BorrarActividadSegura": Procedimiento utilizado para la eliminación de actividades (referenciado en app.py al realizar peticiones DELETE).
+
+
+=======================================================
+PARTE 4: ROLES Y PERMISOS
+=======================================================
+La estructura jerárquica de permisos está dividida en tres roles principales:
+
+1. Administrador (Rol_Admin):
+   - Lectura: Acceso total a todas las tablas e informes.
+   - Escritura: Puede crear actividades, crear nuevas instituciones, y modificar la estructura del contenido.
+   - Administración: Puede crear, modificar y eliminar cuentas de usuario. Puede eliminar actividades permanentemente.
+
+2. Editor (Rol_Editor):
+   - Lectura: Puede visualizar las actividades y catálogos.
+   - Escritura: Puede crear, subir y editar actividades y establecer el Estado (Activa/Deshabilitada). 
+   - Restricción: No tiene acceso al panel de control de usuarios. No puede alterar los roles de otras personas.
+
+3. Estudiante (Rol_Estudiantes):
+   - Lectura: Acceso restringido únicamente a las actividades cuyo Estado es "Activa".
+   - Escritura: Su única escritura permitida es iniciar sesión y redirigirse a los enlaces oficiales para inscribirse a las oportunidades.
+
+
+=======================================================
+PARTE 5: POLÍTICA DE SEGURIDAD
+=======================================================
+Las siguientes políticas han sido codificadas y activadas en el backend (app.py) para garantizar la integridad de las cuentas:
+
+• Políticas de contraseñas seguras:
+  Las contraseñas no se almacenan en texto plano bajo ninguna circunstancia. El sistema utiliza encriptación "bcrypt", el cual inyecta una 'salt' aleatoria a cada contraseña.
+
+• Tiempo de expiración de contraseñas:
+  Se ha establecido un límite de caducidad. El sistema calcula si han pasado 90 días o más desde el último cambio de contraseña; si es así, bloquea el inicio de sesión indicando al usuario: "Tu contraseña ha expirado (más de 90 días)".
+
+• Bloqueo por intentos fallidos:
+  - Número máximo de intentos permitidos: 3 intentos incorrectos.
+  - Penalización: Al alcanzar el límite, el sistema registra la hora en la columna 'BloqueadoHasta' y bloquea el acceso a esa cuenta durante exactamente 3 minutos.
+  - Prevención: El sistema indica los segundos restantes para que el bloqueo se levante automáticamente.
