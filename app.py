@@ -398,9 +398,12 @@ def create_activity():
         fecha_cierre = fecha_cierre if fecha_cierre else None
         
         cursor.execute("""
+            SET NOCOUNT ON;
+            DECLARE @OutputTbl TABLE (ActividadID INT);
             INSERT INTO tblActividades (Titulo, Descripcion, Tipo, FechaInicio, FechaCierre, InstitucionID, Localidad, Provincia, ImagenURL, SitioOficialURL, Estado)
-            OUTPUT inserted.ActividadID
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            OUTPUT inserted.ActividadID INTO @OutputTbl(ActividadID)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+            SELECT ActividadID FROM @OutputTbl;
         """, (data.get('Titulo'), data.get('Descripcion'), data.get('Tipo'), fecha_inicio, fecha_cierre, inst_id, data.get('Localidad'), None, data.get('ImagenURL'), data.get('SitioOficialURL'), data.get('Estado', 'Activa')))
         
         new_activity_id = cursor.fetchone()[0]
