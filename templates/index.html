@@ -583,15 +583,14 @@
                                     <p class="text-white font-medium">Público Estudiantil</p>
                                 </div>
                             </div>
-                        </div>
 
-                        </div>
-                        <!-- Enrollment Button Card -->
-                        <div id="public-activity-action-container" class="glass-card p-6 rounded-3xl">
-                            <button id="public-activity-enroll-btn" class="w-full btn-premium py-3 px-8 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl font-bold transition-all flex justify-center items-center gap-2 shadow-[0_0_25px_rgba(16,185,129,0.4)]">
-                                <i data-lucide="check-circle" class="w-5 h-5"></i>
-                                Inscribirme ahora
-                            </button>
+                            <!-- Enrollment Button Integrated -->
+                            <div id="public-activity-action-container" class="pt-6 border-t border-white/10 mt-2">
+                                <button id="public-activity-enroll-btn" class="w-full btn-premium py-3 px-8 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl font-bold transition-all flex justify-center items-center gap-2 shadow-[0_0_25px_rgba(16,185,129,0.4)]">
+                                    <i data-lucide="check-circle" class="w-5 h-5"></i>
+                                    Inscribirme ahora
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -599,52 +598,92 @@
         </div>
     </div>
 
-    <!-- ================= NEWS DETAIL MODAL ================= -->
-    <div id="news-detail-modal" class="hidden fixed inset-0 z-[70] flex items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-xl">
-        <div class="w-full h-full sm:max-w-4xl sm:h-[90vh] bg-[#080d1a] sm:rounded-3xl shadow-2xl overflow-y-auto relative border border-white/10">
-            <!-- Close Button (Mobile Floating) -->
-            <button onclick="closeNewsDetail()" class="fixed top-6 right-6 z-[80] p-3 bg-black/50 text-white rounded-full backdrop-blur-md border border-white/10 sm:absolute">
-                <i data-lucide="x" class="w-6 h-6"></i>
-            </button>
+    <!-- ================= NEWS DETAIL VIEW (Full Screen) ================= -->
+    <div id="news-detail-modal" class="hidden detail-overlay">
+        <!-- Background Decoration -->
+        <div class="fixed inset-0 overflow-hidden pointer-events-none opacity-50">
+            <div class="absolute -bottom-[10%] -right-[10%] w-[40%] h-[40%] bg-emerald-500/10 rounded-full blur-[120px]"></div>
+            <div class="absolute top-[10%] -left-[10%] w-[30%] h-[30%] bg-blue-500/10 rounded-full blur-[100px]"></div>
+        </div>
 
-            <!-- Hero Image -->
-            <div id="news-detail-hero" class="w-full h-[300px] sm:h-[450px] relative overflow-hidden">
-                <img id="news-detail-image" src="" class="w-full h-full object-cover" alt="">
-                <div class="absolute inset-0 bg-gradient-to-t from-[#080d1a] via-[#080d1a]/20 to-transparent"></div>
+        <!-- Close / Back Button -->
+        <div class="fixed top-0 left-0 right-0 z-[120] bg-[#080d1a]/80 backdrop-blur-md border-b border-white/5">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center">
+                <button onclick="closeNewsDetail()" class="flex items-center gap-2 text-white/70 hover:text-white transition-all font-medium">
+                    <i data-lucide="arrow-left" class="w-5 h-5"></i>
+                    Volver a noticias
+                </button>
             </div>
+        </div>
 
-            <!-- Content Container -->
-            <div class="max-w-3xl mx-auto px-6 py-12 -mt-20 relative z-10">
+        <div class="detail-container mt-16">
+            <!-- Header Section -->
+            <div class="mb-12" data-aos="fade-up">
                 <div class="flex items-center gap-3 mb-6">
-                    <span id="news-detail-date" class="px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold uppercase tracking-wider"></span>
+                    <span id="news-detail-date" class="px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold uppercase tracking-wider">Fecha</span>
                     <span class="w-1 h-1 rounded-full bg-white/20"></span>
-                    <span id="news-detail-views" class="text-white/40 text-xs flex items-center gap-1">
+                    <span class="text-white/40 text-xs flex items-center gap-1">
                         <i data-lucide="eye" class="w-3 h-3"></i> <span id="news-detail-views-count">0</span> vistas
                     </span>
                 </div>
+                <h1 id="news-detail-title" class="text-4xl sm:text-6xl font-extrabold text-white leading-[1.1] mb-8">Título de la Noticia</h1>
+            </div>
 
-                <h1 id="news-detail-title" class="text-4xl sm:text-5xl font-extrabold text-white mb-8 leading-tight"></h1>
-
-                <!-- Author Info -->
-                <div class="flex items-center gap-4 mb-12 p-4 rounded-2xl bg-white/5 border border-white/10">
-                    <div id="news-detail-author-avatar" class="w-12 h-12 rounded-full bg-emerald-500 flex items-center justify-center text-white font-bold text-lg"></div>
-                    <div>
-                        <p class="text-[10px] text-white/40 uppercase tracking-widest font-bold">Publicado por</p>
-                        <p id="news-detail-author-name" class="text-white font-medium"></p>
+            <!-- Main Content Grid -->
+            <div class="detail-grid">
+                <!-- Left Column: Content -->
+                <div class="space-y-10" data-aos="fade-right">
+                    <div id="news-detail-hero" class="rounded-3xl overflow-hidden border border-white/10 shadow-2xl">
+                        <img id="news-detail-image" src="" class="w-full h-auto object-cover max-h-[600px]" alt="Noticia">
+                    </div>
+                    
+                    <div id="news-detail-content" class="prose prose-invert prose-emerald max-w-none text-white/80 leading-relaxed text-xl">
+                        <!-- Contenido dinámico -->
                     </div>
                 </div>
 
-                <!-- Main Content Body -->
-                <div id="news-detail-content" class="prose prose-invert prose-emerald max-w-none text-white/80 leading-relaxed text-lg">
-                    <!-- Dynamic content -->
-                </div>
+                <!-- Right Column: Sidebar -->
+                <div class="space-y-6" data-aos="fade-left">
+                    <div class="sticky-sidebar space-y-6">
+                        <!-- Author Card -->
+                        <div class="glass-card p-6 rounded-3xl space-y-4">
+                            <h4 class="text-white font-bold text-lg">Publicado por</h4>
+                            <div class="flex items-center gap-4">
+                                <div id="news-detail-author-avatar" class="w-14 h-14 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold text-xl shadow-lg">
+                                    AD
+                                </div>
+                                <div>
+                                    <p id="news-detail-author-name" class="text-white font-semibold text-lg">Autor</p>
+                                    <p class="text-[10px] text-white/40 uppercase tracking-widest font-bold">Redacción ParticipaRD</p>
+                                </div>
+                            </div>
+                        </div>
 
-                <!-- Footer / Back -->
-                <div class="mt-16 pt-8 border-t border-white/10 flex justify-center">
-                    <button onclick="closeNewsDetail()" class="flex items-center gap-2 px-8 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white transition-all">
-                        <i data-lucide="arrow-left" class="w-5 h-5"></i>
-                        Volver a noticias
-                    </button>
+                        <!-- Details Card -->
+                        <div class="glass-card p-6 rounded-3xl space-y-6">
+                            <h4 class="text-white font-bold text-lg mb-2">Información</h4>
+                            
+                            <div class="flex items-start gap-4">
+                                <div class="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0 border border-emerald-500/20">
+                                    <i data-lucide="calendar" class="w-5 h-5 text-emerald-400"></i>
+                                </div>
+                                <div>
+                                    <p class="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-0.5">Fecha de publicación</p>
+                                    <p id="news-detail-date-sidebar" class="text-white font-medium">Fecha...</p>
+                                </div>
+                            </div>
+
+                            <div class="flex items-start gap-4">
+                                <div class="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0 border border-emerald-500/20">
+                                    <i data-lucide="clock" class="w-5 h-5 text-emerald-400"></i>
+                                </div>
+                                <div>
+                                    <p class="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-0.5">Tiempo de lectura</p>
+                                    <p class="text-white font-medium">~5 min lectura</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
