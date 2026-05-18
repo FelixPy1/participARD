@@ -9,9 +9,12 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import threading
 import re
+import random
 from datetime import datetime, timedelta
 
 load_dotenv()
+
+PENDING_REGISTRATIONS = {}
 
 app = Flask(__name__)
 CORS(app)
@@ -157,17 +160,94 @@ def favicon():
     # Return 204 No Content for favicon to stop 404s
     return '', 204
 
+@app.route('/api/auth/request_register', methods=['POST'])
+def request_register():
+    data = request.json
+    email = data.get('email')
+    
+    if not email or not email.strip().lower().endswith('@gmail.com'):
+        return jsonify({"error": "Solo se permiten cuentas de correo de @gmail.com."}), 400
+        
+    email = email.strip().lower()
+    password = data.get('password')
+    full_name = data.get('fullName')
+    
+    is_secure, message = is_password_secure(password)
+    if not is_secure:
+        return jsonify({"error": message}), 400
+        
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT 1 FROM tblUsuarios WHERE Email = ?", (email,))
+        if cursor.fetchone():
+            conn.close()
+            return jsonify({"error": "Este correo electrónico ya está registrado."}), 400
+        conn.close()
+        
+        code = str(random.randint(100000, 999999))
+        
+        PENDING_REGISTRATIONS[email] = {
+            "code": code,
+            "fullName": full_name,
+            "password": password,
+            "role": data.get('role', 'Rol_Estudiantes')
+        }
+        
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+        server.starttls()
+        server.login(SMTP_EMAIL, SMTP_PASSWORD)
+
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = "Código de Verificación - ParticipaRD"
+        msg["From"] = f"ParticipaRD <{SMTP_EMAIL}>"
+        msg["To"] = email
+        
+        html_content = f"""
+        <html>
+            <body style="font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #080d1a; padding: 40px; text-align: center; color: white;">
+                <div style="max-w: 500px; margin: 0 auto; background-color: #111827; padding: 40px; border-radius: 24px; border: 1px solid rgba(16,185,129,0.2);">
+                    <h2 style="color: #10b981; margin-top: 0;">¡Hola {full_name}!</h2>
+                    <p style="color: #9ca3af; font-size: 16px;">Para verificar que este correo es válido y te pertenece, ingresa el siguiente código de 6 dígitos en la página de registro:</p>
+                    <div style="background-color: rgba(16,185,129,0.1); border: 1px dashed #10b981; padding: 20px; border-radius: 12px; margin: 30px 0;">
+                        <h1 style="font-size: 42px; letter-spacing: 12px; color: #10b981; margin: 0;">{code}</h1>
+                    </div>
+                    <p style="color: #9ca3af; font-size: 14px;">Si no solicitaste este código, puedes ignorar este mensaje de forma segura.</p>
+                </div>
+            </body>
+        </html>
+        """
+        part = MIMEText(html_content, "html")
+        msg.attach(part)
+        server.send_message(msg)
+        server.quit()
+        
+        return jsonify({"message": "Código de verificación enviado"}), 200
+    except Exception as e:
+        print(f"[ERROR Request Register]: {e}")
+        return jsonify({"error": "No se pudo enviar el correo de verificación. Asegúrate de que el correo existe y puede recibir mensajes."}), 500
+
 @app.route('/api/auth/register', methods=['POST'])
 def register():
     data = request.json
     email = data.get('email')
-    full_name = data.get('fullName')
-    password = data.get('password')
-    role = data.get('role', 'Rol_Estudiantes')
-
-    is_secure, message = is_password_secure(password)
-    if not is_secure:
-        return jsonify({"error": message}), 400
+    
+    if not email:
+        return jsonify({"error": "Correo es requerido."}), 400
+        
+    email = email.strip().lower()
+    code = data.get('code')
+    
+    if email not in PENDING_REGISTRATIONS:
+        return jsonify({"error": "No hay un registro pendiente para este correo. Intenta registrarte de nuevo."}), 400
+        
+    pending = PENDING_REGISTRATIONS[email]
+    if pending['code'] != code:
+        return jsonify({"error": "Código de verificación incorrecto."}), 400
+        
+    full_name = pending['fullName']
+    password = pending['password']
+    role = pending['role']
 
     try:
         salt = bcrypt.gensalt()
@@ -183,6 +263,7 @@ def register():
         
         conn.commit()
         conn.close()
+        del PENDING_REGISTRATIONS[email]
         return jsonify({"message": "Usuario registrado con éxito en SQL Server."}), 201
     except pyodbc.IntegrityError:
         return jsonify({"error": "Este correo electrónico ya está registrado."}), 400

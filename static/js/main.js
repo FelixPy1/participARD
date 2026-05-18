@@ -75,6 +75,7 @@ function navigate(page) {
 
 let currentUser = null;
 let isLoginMode = true;
+let isOtpMode = false;
 
 function checkAuth() {
     try {
@@ -143,6 +144,7 @@ function toggleAuthModal(forceLogin = true) {
         modal.classList.toggle('hidden');
         if (!modal.classList.contains('hidden')) {
             isLoginMode = forceLogin;
+            isOtpMode = false;
             updateAuthForm();
             // Reset errors/success when opening
             document.getElementById('auth-error').classList.add('hidden');
@@ -153,10 +155,26 @@ function toggleAuthModal(forceLogin = true) {
 
 function toggleAuthMode() {
     isLoginMode = !isLoginMode;
+    isOtpMode = false;
     updateAuthForm();
 }
 
 function updateAuthForm() {
+    if (isOtpMode) {
+        document.getElementById('auth-title').innerText = 'Verificación de Correo';
+        document.getElementById('auth-subtitle').innerText = 'Ingresa el código que acabamos de enviar a tu correo.';
+        document.getElementById('auth-submit-btn').innerText = 'Verificar y Crear Cuenta';
+        
+        document.getElementById('group-otp').classList.remove('hidden');
+        document.getElementById('auth-otp').setAttribute('required', 'true');
+        
+        document.getElementById('auth-email').setAttribute('readonly', 'true');
+        document.getElementById('auth-name').setAttribute('readonly', 'true');
+        document.getElementById('auth-password').setAttribute('readonly', 'true');
+        document.getElementById('auth-confirm-password').setAttribute('readonly', 'true');
+        return;
+    }
+
     document.getElementById('auth-title').innerText = isLoginMode ? 'Bienvenido de nuevo' : 'Únete a ParticipaRD';
     const subtitle = document.getElementById('auth-subtitle');
     subtitle.innerText = isLoginMode ? 'Ingresa tus credenciales para continuar.' : 'Comienza a transformar tu futuro hoy mismo.';
@@ -164,6 +182,15 @@ function updateAuthForm() {
     
     document.getElementById('auth-submit-btn').innerText = isLoginMode ? 'Iniciar Sesión' : 'Crear Cuenta';
     document.getElementById('auth-toggle-text').innerText = isLoginMode ? '¿No tienes cuenta? Regístrate aquí' : '¿Ya tienes cuenta? Inicia sesión aquí';
+    
+    document.getElementById('group-otp').classList.add('hidden');
+    document.getElementById('auth-otp').removeAttribute('required');
+    document.getElementById('auth-otp').value = '';
+    
+    document.getElementById('auth-email').removeAttribute('readonly');
+    document.getElementById('auth-name').removeAttribute('readonly');
+    document.getElementById('auth-password').removeAttribute('readonly');
+    document.getElementById('auth-confirm-password').removeAttribute('readonly');
     
     if (isLoginMode) {
         document.getElementById('group-name').classList.add('hidden');
@@ -258,6 +285,7 @@ if (authForm) {
         const errorContainer = document.getElementById('auth-error');
         const errorMsg = document.getElementById('auth-error-msg');
         const successContainer = document.getElementById('auth-success');
+        const submitBtn = document.getElementById('auth-submit-btn');
         
         errorContainer.classList.add('hidden');
         successContainer.classList.add('hidden');
@@ -266,11 +294,25 @@ if (authForm) {
             showPremiumAlert('Error de Validación', 'Las contraseñas no coinciden. Por favor, verifícalas.', 'error');
             return;
         }
+
+        if (!isLoginMode && !email.toLowerCase().trim().endsWith('@gmail.com')) {
+            showPremiumAlert('Error de Validación', 'Solo se permite el registro con cuentas de correo de @gmail.com.', 'error');
+            return;
+        }
         
-        const endpoint = isLoginMode ? '/auth/login' : '/auth/register';
-        const body = isLoginMode ? { email, password } : { email, password, fullName, role };
+        const code = document.getElementById('auth-otp').value;
+        let endpoint = isLoginMode ? '/auth/login' : '/auth/register';
+        let body = isLoginMode ? { email, password } : { email, password, fullName, role, code };
+        
+        if (!isLoginMode && !isOtpMode) {
+            endpoint = '/auth/request_register';
+            body = { email, password, fullName, role };
+        }
         
         try {
+            submitBtn.classList.add('opacity-50', 'pointer-events-none');
+            submitBtn.innerText = 'Procesando...';
+            
             const res = await fetch(API_URL + endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -278,16 +320,18 @@ if (authForm) {
             });
             const data = await res.json();
             
+            submitBtn.classList.remove('opacity-50', 'pointer-events-none');
+            submitBtn.innerText = isOtpMode ? 'Verificar y Crear Cuenta' : (isLoginMode ? 'Iniciar Sesión' : 'Crear Cuenta');
+            
             if (!res.ok) {
                 if (data.lockout) {
                     startLockoutCountdown(data.seconds_remaining);
                     return;
                 }
                 
-                // Show login errors in the inline div for better visibility of attempts
-                if (isLoginMode) {
+                if (isLoginMode || isOtpMode) {
                     errorContainer.classList.remove('hidden');
-                    errorMsg.innerHTML = `<strong>Error de Acceso:</strong><br>${data.error}`;
+                    errorMsg.innerHTML = `<strong>Error:</strong><br>${data.error}`;
                     return;
                 }
                 
@@ -311,11 +355,19 @@ if (authForm) {
                 setTimeout(() => {
                     document.getElementById('auth-modal').classList.add('hidden');
                 }, 2000);
+            } else if (!isLoginMode && !isOtpMode) {
+                isOtpMode = true;
+                updateAuthForm();
+                successContainer.classList.remove('hidden');
+                document.getElementById('auth-success-msg').innerHTML = `<strong>Código enviado</strong><br>Revisa tu correo ${email} (incluyendo SPAM).`;
             } else {
-                showPremiumAlert('¡Registro Exitoso!', 'Tu cuenta ha sido creada. Ahora puedes iniciar sesión con tus credenciales.', 'success');
+                showPremiumAlert('¡Registro Exitoso!', 'Tu cuenta ha sido creada y verificada. Ahora puedes iniciar sesión con tus credenciales.', 'success');
                 toggleAuthMode();
             }
         } catch (err) {
+            submitBtn.classList.remove('opacity-50', 'pointer-events-none');
+            submitBtn.innerText = isOtpMode ? 'Verificar y Crear Cuenta' : (isLoginMode ? 'Iniciar Sesión' : 'Crear Cuenta');
+            
             if (isLoginMode) {
                 errorContainer.classList.remove('hidden');
                 errorMsg.innerHTML = `<strong>Error:</strong> ${err.message}`;
