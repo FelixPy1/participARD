@@ -463,11 +463,22 @@
                     </div>
                 </div>
 
-                <div>
-                    <label class="text-xs text-white/70 mb-1 block">URL de la página oficial </label>
-                    <input id="act-official-url" type="url"
-                        class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white"
-                        placeholder="https://ejemplo.com">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs text-white/70 mb-1 block">URL de la página oficial</label>
+                        <input id="act-official-url" type="url"
+                            class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white"
+                            placeholder="https://ejemplo.com">
+                    </div>
+                    <div>
+                        <label class="text-xs text-white/70 mb-1 block">Provincia</label>
+                        <input id="act-province" list="activity-provinces-list" required type="text"
+                            class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white"
+                            placeholder="Ej. Santo Domingo, Santiago...">
+                        <datalist id="activity-provinces-list">
+                            <!-- Opciones llenadas por JS -->
+                        </datalist>
+                    </div>
                 </div>
 
                 <div>

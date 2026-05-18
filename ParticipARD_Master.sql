@@ -42,6 +42,12 @@ CREATE TABLE tblProvincias (
     Nombre VARCHAR(100) NOT NULL
 );
 
+-- 2.5 Tabla TiposActividad (Normalizado en 3NF)
+CREATE TABLE tblTiposActividad (
+    TipoID INT IDENTITY(1,1) PRIMARY KEY,
+    NombreTipo VARCHAR(50) NOT NULL UNIQUE
+);
+
 -- 3. Tabla Instituciones
 CREATE TABLE tblInstituciones (
     InstitucionID INT IDENTITY(1,1) PRIMARY KEY,
@@ -61,16 +67,20 @@ CREATE TABLE tblUsuarios (
     FechaCreacion DATETIME DEFAULT GETDATE()
 );
 
--- 5. Tabla Actividades
+-- 5. Tabla Actividades (Normalizado en 3NF)
 CREATE TABLE tblActividades (
     ActividadID INT IDENTITY(1,1) PRIMARY KEY,
     Titulo VARCHAR(200) NOT NULL,
     Descripcion TEXT NOT NULL,
-    Tipo VARCHAR(50) NOT NULL, -- becas, olimpiadas, torneos, etc.
-    FechaCierre DATETIME NOT NULL,
+    TipoID INT NOT NULL FOREIGN KEY REFERENCES tblTiposActividad(TipoID),
+    FechaCierre DATE NULL,
     InstitucionID INT NOT NULL FOREIGN KEY REFERENCES tblInstituciones(InstitucionID),
     Localidad VARCHAR(100) NULL,
-    Provincia VARCHAR(100) NULL
+    ProvinciaID INT NULL FOREIGN KEY REFERENCES tblProvincias(ProvinciaID),
+    Estado NVARCHAR(20) DEFAULT 'Activa',
+    FechaInicio DATE NULL,
+    ImagenURL NVARCHAR(MAX) NULL,
+    SitioOficialURL NVARCHAR(MAX) NULL
 );
 
 -- 6. Tabla Inscripciones
@@ -99,18 +109,28 @@ INSERT INTO tblRoles (NombreRol) VALUES
 ('Rol_Administradores'),
 ('Rol_Editores');
 
+INSERT INTO tblProvincias (Nombre) VALUES
+('Santo Domingo'),
+('Santiago'),
+('Internacional');
+
+INSERT INTO tblTiposActividad (NombreTipo) VALUES
+('becas'),
+('olimpiadas'),
+('torneos');
+
 INSERT INTO tblInstituciones (Nombre, Tipo) VALUES 
 ('Ministerio de Educación (MINERD)', 'Ministerio'),
 ('Instituto Tecnológico de las Américas (ITLA)', 'Instituto'),
 ('Olimpiadas Internacionales de Matemáticas', 'Internacional'),
 ('Fundación Carolina', 'Internacional');
 
-INSERT INTO tblActividades (Titulo, Descripcion, Tipo, FechaCierre, InstitucionID, Localidad, Provincia) VALUES 
-('Olimpiada Nacional de Matemáticas', 'Competencia para estudiantes de secundaria de toda la República Dominicana.', 'olimpiadas', '2026-12-31', 1, 'Múltiples Sedes', 'Santo Domingo'),
-('Beca de Software Engineering', 'Beca completa para estudiar ingeniería de software.', 'becas', '2026-10-15', 2, 'Boca Chica', 'Santo Domingo'),
-('Torneo Escolar de Ajedrez', 'Torneo regional de ajedrez escolar.', 'torneos', '2026-08-20', 1, 'Santiago de los Caballeros', 'Santiago'),
-('Olimpiada Internacional IMO', 'Competencia internacional de matemáticas para jóvenes talentos de todos los países.', 'olimpiadas', '2026-11-01', 3, 'Internacional', 'Internacional'),
-('Beca Internacional Fundación Carolina', 'Becas para estudios de postgrado y maestría para estudiantes Iberoamericanos.', 'becas', '2026-09-30', 4, 'Online/España', 'Internacional');
+INSERT INTO tblActividades (Titulo, Descripcion, TipoID, FechaCierre, InstitucionID, Localidad, ProvinciaID, Estado, FechaInicio, ImagenURL, SitioOficialURL) VALUES 
+('Olimpiada Nacional de Matemáticas', 'Competencia para estudiantes de secundaria de toda la República Dominicana.', 2, '2026-12-31', 1, 'Múltiples Sedes', 1, 'Activa', '2026-01-01', NULL, NULL),
+('Beca de Software Engineering', 'Beca completa para estudiar ingeniería de software.', 1, '2026-10-15', 2, 'Boca Chica', 1, 'Activa', '2026-01-01', NULL, NULL),
+('Torneo Escolar de Ajedrez', 'Torneo regional de ajedrez escolar.', 3, '2026-08-20', 1, 'Santiago de los Caballeros', 2, 'Activa', '2026-01-01', NULL, NULL),
+('Olimpiada Internacional IMO', 'Competencia internacional de matemáticas para jóvenes talentos de todos los países.', 2, '2026-11-01', 3, 'Internacional', 3, 'Activa', '2026-01-01', NULL, NULL),
+('Beca Internacional Fundación Carolina', 'Becas para estudios de postgrado y maestría para estudiantes Iberoamericanos.', 1, '2026-09-30', 4, 'Online/España', 3, 'Activa', '2026-01-01', NULL, NULL);
 GO
 
 -- =================================================================================
@@ -121,11 +141,12 @@ AS
 SELECT 
     A.ActividadID,
     A.Titulo,
-    A.Tipo,
+    ta.NombreTipo AS Tipo,
     I.Nombre AS Institucion,
     A.FechaCierre
 FROM tblActividades A
 INNER JOIN tblInstituciones I ON A.InstitucionID = I.InstitucionID
+INNER JOIN tblTiposActividad ta ON A.TipoID = ta.TipoID
 WHERE A.FechaCierre >= GETDATE() OR A.FechaCierre IS NULL;
 GO
 

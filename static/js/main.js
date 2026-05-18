@@ -506,7 +506,7 @@ function renderActivitiesGrid() {
                     </div>
                     <div class="px-2 py-1 rounded ${act.image_url ? 'bg-black/40 backdrop-blur-md border border-white/20 text-white/90' : 'bg-white/5 text-white/50 border border-white/5'} text-xs font-medium flex items-center gap-1">
                         <i data-lucide="map-pin" class="w-3 h-3"></i>
-                        ${act.location !== 'No especificada' && act.location ? act.location : act.province}
+                        ${(act.location && act.location !== 'No especificada' && act.province && act.province !== 'N/A' && act.location !== act.province) ? `${act.location}, ${act.province}` : (act.location && act.location !== 'No especificada' ? act.location : (act.province && act.province !== 'N/A' ? act.province : 'República Dominicana'))}
                     </div>
                 </div>
                 <h3 class="text-xl font-extrabold text-white mb-3 group-hover:text-emerald-400 transition-colors line-clamp-2 leading-snug">${act.title}</h3>
@@ -611,7 +611,7 @@ function openPublicActivityModal(activityId) {
         typeEl.querySelector('span').innerText = act.type_id || 'Actividad';
     }
     
-    document.getElementById('public-activity-province').innerHTML = act.location !== 'No especificada' && act.location ? act.location : act.province;
+    document.getElementById('public-activity-province').innerHTML = (act.location && act.location !== 'No especificada' && act.province && act.province !== 'N/A' && act.location !== act.province) ? `${act.location}, ${act.province}` : (act.location && act.location !== 'No especificada' ? act.location : (act.province && act.province !== 'N/A' ? act.province : 'República Dominicana'));
     document.getElementById('public-activity-inst').innerText = act.institution_name || 'Desconocida';
     
     const startEl = document.getElementById('public-activity-start-date');
@@ -736,13 +736,14 @@ async function loadAdminData() {
     document.getElementById('admin-name').innerText = currentUser.fullName;
 
     try {
-        const [usersRes, actRes, instRes, recentRes, newsRes, contRes] = await Promise.all([
+        const [usersRes, actRes, instRes, recentRes, newsRes, contRes, provRes] = await Promise.all([
             fetch(API_URL + '/users'),
             fetch(API_URL + '/activities?all=true'),
             fetch(API_URL + '/institutions'),
             fetch(API_URL + '/recent_activity'),
             fetch(API_URL + '/news'),
-            fetch(API_URL + '/contributors')
+            fetch(API_URL + '/contributors'),
+            fetch(API_URL + '/provinces')
         ]);
         
         const users = await usersRes.json();
@@ -751,6 +752,7 @@ async function loadAdminData() {
         const recentActivity = await recentRes.json();
         const news = await newsRes.json();
         const contributors = await contRes.json();
+        const provinces = await provRes.json();
         
         if (currentUser.role === 'Rol_Editores') {
             const titleEl = document.getElementById('overview-card-1-title');
@@ -824,6 +826,12 @@ async function loadAdminData() {
         const typesDatalist = document.getElementById('activity-types-list');
         if (typesDatalist) {
             typesDatalist.innerHTML = uniqueTypes.map(t => `<option value="${t}"></option>`).join('');
+        }
+
+        // Fill Provinces Datalist dynamically
+        const provincesDatalist = document.getElementById('activity-provinces-list');
+        if (provincesDatalist && provinces) {
+            provincesDatalist.innerHTML = provinces.map(p => `<option value="${p.name}"></option>`).join('');
         }
 
         // Fill Institution Select removed as it is now free-text
@@ -982,6 +990,9 @@ function openActivityModal() {
     document.getElementById('activity-form').reset();
     document.getElementById('act-id').value = '';
     removeImage();
+    if (document.getElementById('act-province')) {
+        document.getElementById('act-province').value = 'Santo Domingo';
+    }
     document.getElementById('modal-activity-title').innerText = 'Nueva Actividad';
     document.getElementById('activity-modal').classList.remove('hidden');
 }
@@ -1012,6 +1023,9 @@ function editActivity(act) {
         document.getElementById('act-status').value = act.status || 'Activa';
     }
     document.getElementById('act-location').value = act.location;
+    if (document.getElementById('act-province')) {
+        document.getElementById('act-province').value = act.province || 'Santo Domingo';
+    }
     document.getElementById('act-institution').value = act.institution_name || '';
     if(document.getElementById('act-official-url')) {
         document.getElementById('act-official-url').value = act.official_url || '';
@@ -1050,6 +1064,7 @@ if (actForm) {
             FechaCierre: endDate,
             Estado: document.getElementById('act-status') ? document.getElementById('act-status').value : 'Activa',
             Localidad: document.getElementById('act-location').value,
+            Provincia: document.getElementById('act-province') ? document.getElementById('act-province').value : 'Santo Domingo',
             InstitucionNombre: document.getElementById('act-institution').value,
             ImagenURL: document.getElementById('act-image').value || null,
             SitioOficialURL: document.getElementById('act-official-url') ? (document.getElementById('act-official-url').value || null) : null,
@@ -1463,7 +1478,7 @@ function renderAdminActivitiesTable(activities) {
             isClosed = endObj < today;
             endDateString = endObj.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
         }
-        const typeNormalized = a.type_id.toLowerCase();
+        const typeNormalized = (a.type_id || '').toLowerCase();
         
         let typeColor = 'blue';
         if (typeNormalized.includes('beca')) typeColor = 'blue';
@@ -1477,11 +1492,11 @@ function renderAdminActivitiesTable(activities) {
             <tr class="hover:bg-white/5 transition-colors border-b border-white/5 last:border-0">
                 <td class="px-6 py-4">
                     <p class="text-sm font-semibold text-white truncate max-w-[200px]">${a.title}</p>
-                    <p class="text-[10px] text-white/40 mt-1">Creada ${createdTimeLabel.toLowerCase()}</p>
+                    <p class="text-[10px] text-white/40 mt-1">Ubicación: ${(a.location && a.province) ? `${a.location}, ${a.province}` : (a.location || a.province || 'N/A')}</p>
                 </td>
                 <td class="px-6 py-4">
                     <span class="inline-flex px-3 py-1 bg-${typeColor}-500/20 text-${typeColor}-400 border border-${typeColor}-500/30 rounded-full text-[10px] uppercase font-bold tracking-wider">
-                        ${a.type_id}
+                        ${a.type_id || 'Sin Categoría'}
                     </span>
                 </td>
                 <td class="px-6 py-4 text-sm text-white/80">

@@ -360,11 +360,11 @@ def get_activities():
         
         query = """
             SELECT a.ActividadID as id, a.Titulo as title, a.Descripcion as description, 
-                   a.Tipo as type_id, a.FechaCierre as end_date, 
+                   ta.NombreTipo as type_id, a.FechaCierre as end_date, 
                    i.Nombre as institution_name, i.InstitucionID as institution_id,
                    ISNULL(a.Estado, 'Activa') as status,
                    ISNULL(a.Localidad, 'No especificada') as location,
-                   ISNULL(a.Provincia, 'N/A') as province,
+                   ISNULL(p.Nombre, 'N/A') as province,
                    a.ImagenURL as image_url,
                    a.SitioOficialURL as official_url,
                    a.FechaInicio as start_date,
@@ -372,6 +372,8 @@ def get_activities():
                    aud.FechaModificacion as created_at
             FROM tblActividades a
             JOIN tblInstituciones i ON a.InstitucionID = i.InstitucionID
+            LEFT JOIN tblTiposActividad ta ON a.TipoID = ta.TipoID
+            LEFT JOIN tblProvincias p ON a.ProvinciaID = p.ProvinciaID
             OUTER APPLY (
                 SELECT TOP 1 UsuarioModificador, FechaModificacion
                 FROM tblAuditoria_Actividades
@@ -384,10 +386,10 @@ def get_activities():
         if not fetch_all:
             query += " AND (a.FechaCierre >= GETDATE() OR a.FechaCierre IS NULL) AND ISNULL(a.Estado, 'Activa') = 'Activa'"
         if province:
-            query += " AND a.Provincia = ?"
+            query += " AND p.Nombre = ?"
             params.append(province)
         if type_id:
-            query += " AND a.Tipo = ?"
+            query += " AND ta.NombreTipo = ?"
             params.append(type_id)
             
         conn = get_db_connection()
@@ -443,6 +445,20 @@ def get_institutions():
         print(f"[ERROR Get Institutions]: {e}")
         return jsonify({"error": "Error obteniendo instituciones."}), 500
 
+@app.route('/api/provinces', methods=['GET'])
+def get_provinces():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT ProvinciaID as id, Nombre as name FROM tblProvincias ORDER BY Nombre")
+        columns = [column[0] for column in cursor.description]
+        results = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        conn.close()
+        return jsonify(results), 200
+    except Exception as e:
+        print(f"[ERROR Get Provinces]: {e}")
+        return jsonify({"error": "Error obteniendo provincias."}), 500
+
 @app.route('/api/enrollments', methods=['POST'])
 def enroll():
     data = request.json
@@ -493,6 +509,30 @@ def create_activity():
         else:
             inst_id = 1
             
+        tipo_nombre = data.get('Tipo')
+        if tipo_nombre:
+            cursor.execute("SELECT TipoID FROM tblTiposActividad WHERE NombreTipo = ?", (tipo_nombre,))
+            row = cursor.fetchone()
+            if row:
+                tipo_id = row[0]
+            else:
+                cursor.execute("INSERT INTO tblTiposActividad (NombreTipo) OUTPUT inserted.TipoID VALUES (?)", (tipo_nombre,))
+                tipo_id = cursor.fetchone()[0]
+        else:
+            cursor.execute("SELECT TOP 1 TipoID FROM tblTiposActividad")
+            tipo_id = cursor.fetchone()[0]
+
+        provincia_nombre = data.get('Provincia')
+        provincia_id = None
+        if provincia_nombre:
+            cursor.execute("SELECT ProvinciaID FROM tblProvincias WHERE Nombre = ?", (provincia_nombre,))
+            row = cursor.fetchone()
+            if row:
+                provincia_id = row[0]
+            else:
+                cursor.execute("INSERT INTO tblProvincias (Nombre) OUTPUT inserted.ProvinciaID VALUES (?)", (provincia_nombre,))
+                provincia_id = cursor.fetchone()[0]
+
         fecha_inicio = data.get('FechaInicio')
         fecha_inicio = fecha_inicio if fecha_inicio else None
         fecha_cierre = data.get('FechaCierre')
@@ -501,11 +541,11 @@ def create_activity():
         cursor.execute("""
             SET NOCOUNT ON;
             DECLARE @OutputTbl TABLE (ActividadID INT);
-            INSERT INTO tblActividades (Titulo, Descripcion, Tipo, FechaInicio, FechaCierre, InstitucionID, Localidad, Provincia, ImagenURL, SitioOficialURL, Estado)
+            INSERT INTO tblActividades (Titulo, Descripcion, TipoID, FechaInicio, FechaCierre, InstitucionID, Localidad, ProvinciaID, ImagenURL, SitioOficialURL, Estado)
             OUTPUT inserted.ActividadID INTO @OutputTbl(ActividadID)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
             SELECT ActividadID FROM @OutputTbl;
-        """, (data.get('Titulo'), data.get('Descripcion'), data.get('Tipo'), fecha_inicio, fecha_cierre, inst_id, data.get('Localidad'), None, data.get('ImagenURL'), data.get('SitioOficialURL'), data.get('Estado', 'Activa')))
+        """, (data.get('Titulo'), data.get('Descripcion'), tipo_id, fecha_inicio, fecha_cierre, inst_id, data.get('Localidad'), provincia_id, data.get('ImagenURL'), data.get('SitioOficialURL'), data.get('Estado', 'Activa')))
         
         new_activity_id = cursor.fetchone()[0]
         
@@ -558,6 +598,30 @@ def update_activity(id):
         else:
             inst_id = 1
 
+        tipo_nombre = data.get('Tipo')
+        if tipo_nombre:
+            cursor.execute("SELECT TipoID FROM tblTiposActividad WHERE NombreTipo = ?", (tipo_nombre,))
+            row = cursor.fetchone()
+            if row:
+                tipo_id = row[0]
+            else:
+                cursor.execute("INSERT INTO tblTiposActividad (NombreTipo) OUTPUT inserted.TipoID VALUES (?)", (tipo_nombre,))
+                tipo_id = cursor.fetchone()[0]
+        else:
+            cursor.execute("SELECT TOP 1 TipoID FROM tblTiposActividad")
+            tipo_id = cursor.fetchone()[0]
+
+        provincia_nombre = data.get('Provincia')
+        provincia_id = None
+        if provincia_nombre:
+            cursor.execute("SELECT ProvinciaID FROM tblProvincias WHERE Nombre = ?", (provincia_nombre,))
+            row = cursor.fetchone()
+            if row:
+                provincia_id = row[0]
+            else:
+                cursor.execute("INSERT INTO tblProvincias (Nombre) OUTPUT inserted.ProvinciaID VALUES (?)", (provincia_nombre,))
+                provincia_id = cursor.fetchone()[0]
+
         fecha_inicio = data.get('FechaInicio')
         fecha_inicio = fecha_inicio if fecha_inicio else None
         fecha_cierre = data.get('FechaCierre')
@@ -565,10 +629,10 @@ def update_activity(id):
         
         cursor.execute("""
             UPDATE tblActividades 
-            SET Titulo=?, Descripcion=?, Tipo=?, FechaInicio=?, FechaCierre=?, Localidad=?, Provincia=?, InstitucionID=?, ImagenURL=?, SitioOficialURL=?, Estado=?
+            SET Titulo=?, Descripcion=?, TipoID=?, FechaInicio=?, FechaCierre=?, Localidad=?, ProvinciaID=?, InstitucionID=?, ImagenURL=?, SitioOficialURL=?, Estado=?
             WHERE ActividadID=?
-        """, (data.get('Titulo'), data.get('Descripcion'), data.get('Tipo'), fecha_inicio, fecha_cierre, 
-              data.get('Localidad'), None, inst_id, data.get('ImagenURL'), data.get('SitioOficialURL'), data.get('Estado', 'Activa'), id))
+        """, (data.get('Titulo'), data.get('Descripcion'), tipo_id, fecha_inicio, fecha_cierre, 
+              data.get('Localidad'), provincia_id, inst_id, data.get('ImagenURL'), data.get('SitioOficialURL'), data.get('Estado', 'Activa'), id))
               
         cursor.execute("""
             INSERT INTO tblAuditoria_Actividades (ActividadID, Accion, UsuarioModificador)
