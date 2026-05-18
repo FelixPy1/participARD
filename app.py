@@ -104,15 +104,19 @@ def send_activity_notification_email(activity_data, recipient_emails):
         server.login(SMTP_EMAIL, SMTP_PASSWORD)
 
         for email in recipient_emails:
-            msg = MIMEMultipart("alternative")
-            msg["Subject"] = subject
-            msg["From"] = f"ParticipARD <{SMTP_EMAIL}>"
-            msg["To"] = email
-            
-            part = MIMEText(html_content, "html")
-            msg.attach(part)
-            
-            server.send_message(msg)
+            try:
+                msg = MIMEMultipart("alternative")
+                msg["Subject"] = subject
+                msg["From"] = f"ParticipARD <{SMTP_EMAIL}>"
+                msg["To"] = email
+                
+                part = MIMEText(html_content, "html")
+                msg.attach(part)
+                
+                server.send_message(msg)
+            except Exception as e:
+                print(f"[EMAIL ERROR] No se pudo enviar el correo a {email}: {e}")
+                continue
             
         server.quit()
         print(f"[EMAIL] Notificaciones enviadas exitosamente a {len(recipient_emails)} usuarios.")
