@@ -64,7 +64,12 @@ CREATE TABLE tblUsuarios (
     RolID INT NOT NULL FOREIGN KEY REFERENCES tblRoles(RolID),
     InstitucionID INT NULL FOREIGN KEY REFERENCES tblInstituciones(InstitucionID),
     ProvinciaID INT NULL FOREIGN KEY REFERENCES tblProvincias(ProvinciaID),
-    FechaCreacion DATETIME DEFAULT GETDATE()
+    IntentosFallidos INT DEFAULT 0,
+    BloqueadoHasta DATETIME NULL,
+    FechaUltimoCambioPassword DATETIME DEFAULT GETDATE(),
+    FechaCreacion DATETIME DEFAULT GETDATE(),
+    CONSTRAINT CK_Usuarios_Email_Gmail CHECK (Email LIKE '%@gmail.com'),
+    CONSTRAINT CK_Usuarios_IntentosFallidos CHECK (IntentosFallidos >= 0)
 );
 
 -- 5. Tabla Actividades (Normalizado en 3NF)
@@ -187,6 +192,62 @@ BEGIN
     DELETE FROM tblActividades WHERE ActividadID = @ActividadID;
 END
 GO
+
+CREATE PROCEDURE sp_RegistrarIntentoLogin
+    @Email VARCHAR(150),
+    @LoginExitoso BIT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @UsuarioID UNIQUEIDENTIFIER;
+    DECLARE @Intentos INT;
+    DECLARE @BloqueadoHasta DATETIME;
+
+    SELECT @UsuarioID = UsuarioID, @Intentos = IntentosFallidos, @BloqueadoHasta = BloqueadoHasta
+    FROM tblUsuarios
+    WHERE Email = @Email;
+
+    IF @UsuarioID IS NULL
+    BEGIN
+        SELECT 0 AS IntentosFallidos, NULL AS BloqueadoHasta;
+        RETURN;
+    END
+
+    IF @LoginExitoso = 1
+    BEGIN
+        UPDATE tblUsuarios
+        SET IntentosFallidos = 0,
+            BloqueadoHasta = NULL
+        WHERE UsuarioID = @UsuarioID;
+        
+        SELECT 0 AS IntentosFallidos, NULL AS BloqueadoHasta;
+    END
+    ELSE
+    BEGIN
+        SET @Intentos = ISNULL(@Intentos, 0) + 1;
+        
+        IF @Intentos >= 3
+        BEGIN
+            SET @BloqueadoHasta = DATEADD(minute, 3, GETDATE());
+            UPDATE tblUsuarios
+            SET IntentosFallidos = @Intentos,
+                BloqueadoHasta = @BloqueadoHasta
+            WHERE UsuarioID = @UsuarioID;
+        END
+        ELSE
+        BEGIN
+            SET @BloqueadoHasta = NULL;
+            UPDATE tblUsuarios
+            SET IntentosFallidos = @Intentos,
+                BloqueadoHasta = NULL
+            WHERE UsuarioID = @UsuarioID;
+        END
+        
+        SELECT @Intentos AS IntentosFallidos, @BloqueadoHasta AS BloqueadoHasta;
+    END
+END
+GO
+
 
 -- =================================================================================
 -- PARTE 3: TRIGGERS

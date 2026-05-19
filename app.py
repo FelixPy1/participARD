@@ -303,25 +303,24 @@ def login():
             }), 403
 
         if not bcrypt.checkpw(password.encode('utf-8'), password_hash.encode('utf-8')):
-            # Increment failed attempts
-            intentos += 1
-            if intentos >= 3:
-                nuevo_bloqueo = datetime.now() + timedelta(minutes=3)
-                cursor.execute("UPDATE tblUsuarios SET IntentosFallidos = ?, BloqueadoHasta = ? WHERE UsuarioID = ?", 
-                             (intentos, nuevo_bloqueo, user_id))
-                conn.commit()
+            # Registrar intento fallido directamente en la Base de Datos mediante Stored Procedure
+            cursor.execute("{CALL sp_RegistrarIntentoLogin (?, ?)}", (email, False))
+            res_row = cursor.fetchone()
+            conn.commit()
+            
+            intentos_act, bloqueado_hasta_act = res_row if res_row else (intentos + 1, None)
+            
+            if intentos_act >= 3:
                 return jsonify({
                     "error": "Cuenta bloqueada por 3 minutos tras 3 intentos fallidos.",
                     "lockout": True,
                     "seconds_remaining": 180
                 }), 403
             else:
-                cursor.execute("UPDATE tblUsuarios SET IntentosFallidos = ? WHERE UsuarioID = ?", (intentos, user_id))
-                conn.commit()
-                return jsonify({"error": f"Contraseña incorrecta. Intento {intentos} de 3."}), 401
+                return jsonify({"error": f"Contraseña incorrecta. Intento {intentos_act} de 3."}), 401
             
-        # Success - Reset lockout and attempts
-        cursor.execute("UPDATE tblUsuarios SET IntentosFallidos = 0, BloqueadoHasta = NULL WHERE UsuarioID = ?", (user_id,))
+        # Success - Resetear lockout e intentos fallidos en la Base de Datos mediante Stored Procedure
+        cursor.execute("{CALL sp_RegistrarIntentoLogin (?, ?)}", (email, True))
         
         # Check password expiration (90 days)
         if fecha_pass and (datetime.now() - fecha_pass).days >= 90:

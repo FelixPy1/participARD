@@ -34,10 +34,11 @@ Estructura Jerárquica e implementada por código:
 
 ## 🛡️ Parte 5: Política de seguridad
 
-Integración con Políticas Locales de Windows utilizando `CHECK_POLICY = ON` al crear los Logins de la DB.
-* **Contraseñas Seguras:** Se configuró para que SQL envíe advertencias si la clave es menor a 12 caracteres y exija complejidad (Mayúsculas, Números, Especiales).
-* **Expiración de Contraseña:** `CHECK_EXPIRATION = ON` obliga a que el Personal y Editores roten cada 90 días sus accesos de bases de datos.
-* **Número de intentos fallidos:** Vinculado con la *Account Lockout Policy* de Active Directory o Local SecPol para el bloqueo total tras **3 intentos fallidos**.
+Las políticas de seguridad se gestionan y garantizan **directamente en el motor de la Base de Datos (SQL Server)** mediante restricciones de integridad y objetos programables:
+* **Inicios de Sesión del Servidor:** Integración con Políticas Locales de Windows utilizando `CHECK_POLICY = ON` y `CHECK_EXPIRATION = ON` al crear los Logins de la DB (`AdminApp` y `StudentApp`), obligando a que hereden la complejidad del sistema y rote accesos de bases de datos.
+* **Restricción CHECK de Correo de Estudiantes:** Se ha configurado una restricción `CHECK` a nivel de tabla (`CK_Usuarios_Email_Gmail`) que rechaza cualquier correo electrónico que no pertenezca estrictamente al dominio `@gmail.com`.
+* **Restricción CHECK de Intentos Fallidos:** Se aplica `CK_Usuarios_IntentosFallidos` para asegurar que el contador de fallos sea no-negativo (`>= 0`).
+* **Procedimiento Almacenado de Bloqueo de Cuentas (`sp_RegistrarIntentoLogin`):** El estado de la *Account Lockout Policy* (bloqueo tras **3 intentos fallidos** por **3 minutos**) se procesa íntegramente en la base de datos a través de este stored procedure. El backend de Flask delega esta lógica de transición de estados y cálculo de tiempos en la base de datos, garantizando atomicidad y consistencia.
 
 ## 💾 Parte 6 y 7: Esquema y ejecución de respaldos
 
